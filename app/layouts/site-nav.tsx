@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Link } from "react-router";
 
 type NavItem = {
   id: string;
@@ -8,8 +9,8 @@ type NavItem = {
 
 const liveStreams: NavItem[] = [
   {
-    id: "hd",
-    label: "HD Camera",
+    id: "box",
+    label: "测试Box",
     icon: (
       <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
         <path d="M17 10.5V7a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-3.5l4 4v-11l-4 4z" />
@@ -148,8 +149,8 @@ function NavSection({
           const active = item.id === activeId;
           return (
             <li key={item.id}>
-              <a
-                href={`#${item.id}`}
+              <Link
+                to={`/${item.id}`}
                 className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition ${
                   active
                     ? "bg-slate-200/90 font-medium text-slate-800 dark:bg-slate-700/80 dark:text-slate-100"
@@ -166,7 +167,7 @@ function NavSection({
                   {item.icon}
                 </span>
                 {item.label}
-              </a>
+              </Link>
             </li>
           );
         })}

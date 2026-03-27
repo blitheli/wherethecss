@@ -81,10 +81,10 @@ export function SiteHeader() {
           <IssMark className="h-9 w-9 shrink-0" />
           <div className="min-w-0 leading-tight">
             <span className="block truncate font-semibold text-white">
-              ISS Live Now
+              中国空间站
             </span>
             <span className="block truncate text-xs text-slate-300">
-              HD Camera
+              3D 可视化展示
             </span>
           </div>
         </a>
@@ -106,10 +106,7 @@ export function SiteHeader() {
           <button
             type="button"
             className="relative rounded-lg border border-white/35 bg-slate-700/40 px-3 py-2 text-sm font-medium text-white transition hover:bg-slate-700/60 sm:px-4"
-          >
-            <span className="absolute -right-1 -top-1 rounded bg-emerald-500 px-1.5 py-0.5 text-[10px] font-bold uppercase leading-none text-white shadow">
-              Free
-            </span>
+          >           
             Unlock All Features
           </button>
         </div>
