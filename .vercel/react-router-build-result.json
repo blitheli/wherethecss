@@ -1,0 +1,140 @@
+{
+  "buildManifest": {
+    "serverBundles": {
+      "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0": {
+        "id": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+        "file": "build/server/nodejs_eyJydW50aW1lIjoibm9kZWpzIn0/index.js",
+        "config": {
+          "runtime": "nodejs"
+        }
+      }
+    },
+    "routeIdToServerBundleId": {
+      "root": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+      "routes/home": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+      "routes/box": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+      "routes/error": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0"
+    },
+    "routes": {
+      "root": {
+        "id": "root",
+        "file": "app/root.tsx",
+        "path": "",
+        "config": {
+          "runtime": "nodejs"
+        }
+      },
+      "layouts/MainLayout": {
+        "id": "layouts/MainLayout",
+        "parentId": "root",
+        "file": "app/layouts/MainLayout.tsx",
+        "config": {}
+      },
+      "routes/home": {
+        "id": "routes/home",
+        "parentId": "layouts/MainLayout",
+        "file": "app/routes/home.tsx",
+        "index": true,
+        "config": {}
+      },
+      "routes/box": {
+        "id": "routes/box",
+        "parentId": "layouts/MainLayout",
+        "file": "app/routes/box.tsx",
+        "path": "box",
+        "config": {}
+      },
+      "routes/error": {
+        "id": "routes/error",
+        "parentId": "layouts/MainLayout",
+        "file": "app/routes/error.tsx",
+        "path": "*",
+        "config": {}
+      }
+    }
+  },
+  "reactRouterConfig": {
+    "appDirectory": "D:/wherethecss/app",
+    "basename": "/",
+    "buildDirectory": "D:/wherethecss/build",
+    "future": {
+      "unstable_optimizeDeps": false,
+      "unstable_passThroughRequests": false,
+      "unstable_subResourceIntegrity": false,
+      "unstable_trailingSlashAwareDataRequests": false,
+      "unstable_previewServerPrerendering": false,
+      "v8_middleware": false,
+      "v8_splitRouteModules": false,
+      "v8_viteEnvironmentApi": false
+    },
+    "routes": {
+      "root": {
+        "id": "root",
+        "file": "root.tsx",
+        "path": ""
+      },
+      "layouts/MainLayout": {
+        "id": "layouts/MainLayout",
+        "parentId": "root",
+        "file": "layouts/MainLayout.tsx"
+      },
+      "routes/home": {
+        "id": "routes/home",
+        "parentId": "layouts/MainLayout",
+        "file": "routes/home.tsx",
+        "index": true
+      },
+      "routes/box": {
+        "id": "routes/box",
+        "parentId": "layouts/MainLayout",
+        "file": "routes/box.tsx",
+        "path": "box"
+      },
+      "routes/error": {
+        "id": "routes/error",
+        "parentId": "layouts/MainLayout",
+        "file": "routes/error.tsx",
+        "path": "*"
+      }
+    },
+    "routeDiscovery": {
+      "mode": "lazy",
+      "manifestPath": "/__manifest"
+    },
+    "serverBuildFile": "index.js",
+    "serverModuleFormat": "esm",
+    "ssr": true,
+    "allowedActionOrigins": false,
+    "unstable_routeConfig": [
+      {
+        "id": "root",
+        "path": "",
+        "file": "root.tsx",
+        "children": [
+          {
+            "file": "layouts/MainLayout.tsx",
+            "children": [
+              {
+                "file": "routes/home.tsx",
+                "index": true
+              },
+              {
+                "file": "routes/box.tsx",
+                "path": "box"
+              },
+              {
+                "file": "routes/error.tsx",
+                "path": "*"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "viteConfig": {
+    "build": {
+      "assetsDir": "assets"
+    }
+  }
+}
