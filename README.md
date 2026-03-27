@@ -1,4 +1,4 @@
-# Welcome to React Router!
+# 中国空间站3D展示
 
 A modern, production-ready template for building full-stack React applications using React Router.
 
@@ -14,17 +14,17 @@ A modern, production-ready template for building full-stack React applications u
 - 🎉 TailwindCSS for styling
 - 📖 [React Router docs](https://reactrouter.com/)
 
-## Getting Started
+## 开始使用
 
-### Installation
+### 安装
 
-Install the dependencies:
+安装依赖:
 
 ```bash
 npm install
 ```
 
-### Development
+### 开发(Development)
 
 Start the development server with HMR:
 
@@ -34,7 +34,7 @@ npm run dev
 
 Your application will be available at `http://localhost:5173`.
 
-## Building for Production
+## 发布(Production)
 
 Create a production build:
 

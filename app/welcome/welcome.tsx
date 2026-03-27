@@ -1,48 +1,57 @@
 import logoDark from "./logo-dark.svg";
 import logoLight from "./logo-light.svg";
+import { SiteHeader } from "../components/site-header";
+import { SiteNav } from "../components/site-nav";
 
 export function Welcome() {
   return (
-    <main className="flex items-center justify-center pt-16 pb-4">
-      <div className="flex-1 flex flex-col items-center gap-16 min-h-0">
-        <header className="flex flex-col items-center gap-9">
-          <div className="w-[500px] max-w-[100vw] p-4">
-            <img
-              src={logoLight}
-              alt="React Router"
-              className="block w-full dark:hidden"
-            />
-            <img
-              src={logoDark}
-              alt="React Router"
-              className="hidden w-full dark:block"
-            />
+    <div className="flex min-h-screen flex-col bg-slate-100 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+      <SiteHeader />
+      <div className="flex min-h-0 flex-1">
+        <SiteNav />
+        <main className="min-w-0 flex-1 overflow-y-auto p-6 md:p-8">
+          <div className="mx-auto flex max-w-2xl flex-col items-center gap-12">
+            <div className="w-full max-w-[500px] p-4">
+              <img
+                src={logoLight}
+                alt="React Router"
+                className="block w-full dark:hidden"
+              />
+              <img
+                src={logoDark}
+                alt="React Router"
+                className="hidden w-full dark:block"
+              />
+            </div>
+            <div className="w-full max-w-[300px] space-y-6 px-4">
+              <nav
+                className="space-y-4 rounded-3xl border border-slate-200 bg-white/80 p-6 dark:border-slate-700 dark:bg-slate-900/80"
+                aria-label="资源链接"
+              >
+                <p className="text-center leading-6 text-slate-700 dark:text-slate-200">
+                  What&apos;s next?
+                </p>
+                <ul>
+                  {resources.map(({ href, text, icon }) => (
+                    <li key={href}>
+                      <a
+                        className="group flex items-center gap-3 self-stretch p-3 leading-normal text-blue-700 hover:underline dark:text-blue-400"
+                        href={href}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        {icon}
+                        {text}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </nav>
+            </div>
           </div>
-        </header>
-        <div className="max-w-[300px] w-full space-y-6 px-4">
-          <nav className="rounded-3xl border border-gray-200 p-6 dark:border-gray-700 space-y-4">
-            <p className="leading-6 text-gray-700 dark:text-gray-200 text-center">
-              What&apos;s next?
-            </p>
-            <ul>
-              {resources.map(({ href, text, icon }) => (
-                <li key={href}>
-                  <a
-                    className="group flex items-center gap-3 self-stretch p-3 leading-normal text-blue-700 hover:underline dark:text-blue-500"
-                    href={href}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    {icon}
-                    {text}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </nav>
-        </div>
+        </main>
       </div>
-    </main>
+    </div>
   );
 }
 
