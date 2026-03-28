@@ -9,16 +9,25 @@
     "typecheck": "react-router typegen && tsc"
   },
   "dependencies": {
+    "@emotion/styled": "^11.14.1",
     "@react-router/node": "7.13.2",
     "@react-router/serve": "7.13.2",
+    "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.5.0",
+    "@takram/three-atmosphere": "^0.17.1",
     "@takram/three-geospatial": "^0.7.1",
     "@vercel/react-router": "^1.2.6",
     "3d-tiles-renderer": "^0.4.23",
+    "antd": "^6.3.4",
+    "framer-motion": "^12.38.0",
     "isbot": "^5.1.36",
+    "jotai": "^2.19.0",
+    "leva": "^0.10.1",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
-    "react-router": "7.13.2"
+    "react-router": "7.13.2",
+    "stats-gl": "^4.1.0",
+    "workerpool": "^10.0.1"
   },
   "devDependencies": {
     "@react-router/dev": "7.13.2",
