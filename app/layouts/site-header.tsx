@@ -48,7 +48,7 @@ function IssMark({ className }: { className?: string }) {
 }
 
 export function SiteHeader() {
-  const [dark, setDark] = useState(false);
+  const [dark, setDark] = useState(true);
 
   useEffect(() => {
     const root = document.documentElement;

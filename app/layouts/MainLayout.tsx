@@ -8,7 +8,7 @@ export default function MainLayout() {
       <SiteHeader />
       <div className="flex min-h-0 flex-1">
         <SiteNav />
-        <main className="min-w-0 flex-1 overflow-y-auto p-6 md:p-8">
+        <main className="min-w-0 flex-1 overflow-y-auto">
           <Outlet />
         </main>
       </div>

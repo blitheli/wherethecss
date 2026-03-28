@@ -42,6 +42,10 @@ Create a production build:
 npm run build
 ```
 
+## 开发
+
+- 若要增加新的页面,首先在app/routes文件夹里新增对应的tsx页面;
+- 然后在layouts/site-nav.tsx里导航栏添加对应的按钮
 
 ## Vercel
 
