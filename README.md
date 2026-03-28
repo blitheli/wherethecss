@@ -47,6 +47,12 @@ npm run build
 
 本项目开发阶段使用Vercel进行发布，便于随时查看网页效果
 
+- 在 package.json 中增加了 @vercel/react-router（当前为 ^1.2.6）。
+- 从 @vercel/react-router/vite 引入 vercelPreset，并加入 presets: [vercelPreset()]，让构建产物符合 Vercel 的 SSR / 函数拆分与部署摘要。
+- 打开vercel.com，用 GitHub导入本仓库。
+- 之后本仓库commit后,vercel.com自动更新
+- 查看网址: https://wherethecss.vercel.app/
+
 ## 样式
 
 This template comes with [Tailwind CSS](https://tailwindcss.com/) already configured for a simple default starting experience. You can use whatever CSS framework you prefer.
