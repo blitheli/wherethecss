@@ -5,6 +5,7 @@ export default [
 		index("routes/home.tsx"),
 		route("box", "routes/box.tsx"),
 		route("leo", "routes/LEO.tsx"),
+		route("tiangong", "routes/Tiangong.tsx"),
 		route("*", "routes/error.tsx"),
 	]),
 ] satisfies RouteConfig;
