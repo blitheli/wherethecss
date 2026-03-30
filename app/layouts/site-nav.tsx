@@ -185,13 +185,43 @@ function NavSection({
   );
 }
 
-export function SiteNav() {
+export function SiteNav({
+  isCollapsed,
+  onToggle,
+}: {
+  isCollapsed: boolean;
+  onToggle: () => void;
+}) {
   return (
-    <aside className="w-56 shrink-0 overflow-y-auto border-r border-slate-200 bg-gray-50 sm:w-64 dark:border-slate-700 dark:bg-slate-900/50">
-      <nav className="p-4 pt-5" aria-label="站内导航">
-        <NavSection title="Live streams" items={liveStreams} activeId="hd" />
-        <NavSection title="Learn" items={learnItems} activeId="location" />
-      </nav>
-    </aside>
+    <>
+      {isCollapsed && (
+        <button
+          onClick={onToggle}
+          className="fixed left-4 top-[56px] z-50 flex h-10 w-10 items-center justify-center rounded-lg bg-slate-200 text-slate-600 hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600"
+          title="展开导航"
+        >
+          <svg className="h-6 w-6" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+            <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
+          </svg>
+        </button>
+      )}
+      {isCollapsed ? null : (
+        <aside className="w-56 overflow-y-auto border-r border-slate-200 bg-gray-50 sm:w-64 dark:border-slate-700 dark:bg-slate-900/50">
+          <nav className="p-4 pt-5" aria-label="站内导航">
+            <button
+              onClick={onToggle}
+              className="mb-4 flex w-full items-center justify-center rounded-lg p-2 text-slate-600 hover:bg-slate-200/60 dark:text-slate-300 dark:hover:bg-slate-700/50"
+              title="收起导航"
+            >
+              <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                <path d="M10 17l5-5-5-5v10z" />
+              </svg>
+            </button>
+            <NavSection title="Live streams" items={liveStreams} activeId="hd" />
+            <NavSection title="Learn" items={learnItems} activeId="location" />
+          </nav>
+        </aside>
+      )}
+    </>
   );
 }

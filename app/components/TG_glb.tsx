@@ -91,10 +91,9 @@ export const TG_glb: FC<TiangongProps> = ({
       .normalize()
 
     const { x, y, z } = sunDirectionLocal
-    // 绕+X轴旋转的角度, +Y为零点, 
+    // 绕+X轴旋转的角度, +Y为零点,
     // 注意此角度和天和太阳翼的beta角度相反，也和梦天太阳翼的alpha角度相反
     const rotX = Math.atan2(z, y)
-    console.log('rotX', rotX * 180 / Math.PI)
 
     // 绕+Z轴旋转的角度, YZ平面为零点(与YZ平面的夹角)
     // 作为梦天和问天的beta角
@@ -116,7 +115,6 @@ export const TG_glb: FC<TiangongProps> = ({
   return (
     <group {...props}  rotation-z={0} >
       <primitive object={gltf.scene}/>
-      <axesHelper args={[100]} />
     </group>
   )
 }
