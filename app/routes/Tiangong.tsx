@@ -38,7 +38,7 @@ import { ReorientationPlugin } from "../plugins/ReorientationPlugin";
 import { Globe } from "../components/Globe";
 import { CesiumGlobe } from "../components/CesiumGlobe";
 import { ISS } from "../components/ISS";
-import { Tiangong } from "../components/Tiangong";
+import { TG_glb } from "../components/TG_glb";
 import { Ellipsoid, Geodetic, radians } from "@takram/three-geospatial";
 import {
   getLocalDate,
@@ -247,7 +247,7 @@ function Content() {
           left={-60}
           right={60}
           near={0}
-          far={160}
+          far={100}
         />
       </atmosphereLight>
       <OrbitControls minDistance={20} maxDistance={1e5} />
@@ -265,7 +265,7 @@ function Content() {
         />
       </CesiumGlobe>
       <Suspense>
-        <Tiangong
+        <TG_glb
           matrixWorldToECEF={atmosphereContext.matrixWorldToECEF.value}
           sunDirectionECEF={atmosphereContext.sunDirectionECEF.value}
         />
@@ -287,7 +287,7 @@ export default function TiangongRoute() {
       }}
       camera={{
         fov: 50,
-        position: [80, 80, 100],
+        position: [40, 40, 60],
         near: 10,
         far: 1e7,
       }}

@@ -7,6 +7,9 @@ import { ReorientationPlugin as ReorientationPluginBase } from '3d-tiles-rendere
     
   
     update() 被引擎调用时，若你已设好经纬度，就执行一次「以该点为新的世界原点参考」的变换；没设齐则什么都不做，避免乱调用。
+  
+  注意： 内部在做ENU转换后，为了适应+Y向上的习惯又做了旋转，最终
+    +X向西，+Y向上，+Z向北
     
 */
 //TypeScript 的「模块声明合并 / 扩充」：给已有第三方模块 3d-tiles-renderer/plugins 里的类型补字段，不改库的源码。
