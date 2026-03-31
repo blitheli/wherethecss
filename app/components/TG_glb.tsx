@@ -20,7 +20,7 @@ import { useGuardedFrame } from '../hooks/useGuardedFrame'
   天和太阳翼: 零位时，帆板法线指向 +y方向
     beta角: 绕-X转动
 
-  梦天太阳翼: 零位时，帆板法线指向 +y方向, 即beta=180°
+  梦天太阳翼: 零位时，帆板法线指向 +y方向
     alpha角: 绕-X转动
     beta角:  绕+Z转动
 
@@ -54,7 +54,7 @@ export const TG_glb: FC<TiangongProps> = ({
   sunDirectionECEF,
   ...props
 }) => {
-  const gltf = useGLTF('/models/tiangong.glb')
+  const gltf = useGLTF('/models/tg_simple.glb')
 
   const userData: {
     initialized?: boolean
@@ -70,9 +70,9 @@ export const TG_glb: FC<TiangongProps> = ({
 
   const { panelTH, panelsSYCT} = useMemo(() => {
     const scene = gltf.scene
-    const th = wingPanelTarget(scene, 'TGTH', 'THTYY')
-    const wt = wingPanelTarget(scene, 'TGWT', 'WTTYY')
-    const mt = wingPanelTarget(scene, 'TGMT', 'MTTYY')
+    const th = scene.getObjectByName('THTYY')
+    const wt = scene.getObjectByName('WTTYY')
+    const mt = scene.getObjectByName('MTTYY')
     return {
       panelTH: th != null ? [th] : [],
       panelsSYCT: wt != null ? [wt, mt] : []
@@ -97,7 +97,7 @@ export const TG_glb: FC<TiangongProps> = ({
 
     // 绕+Z轴旋转的角度, YZ平面为零点(与YZ平面的夹角)
     // 作为梦天和问天的beta角
-    const rotZ = Math.asin(-x) + Math.PI
+    const rotZ = Math.asin(-x)
 
     const alpha = 0.05
     // 天和太阳翼(beta角)
