@@ -1,7 +1,13 @@
 {
   "permissions": {
     "allow": [
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "WebFetch(domain:celestrak.org)",
+      "WebSearch",
+      "WebFetch(domain:www.celestrak.org)",
+      "Bash(npm install:*)",
+      "Bash(npm run:*)",
+      "Bash(xargs grep:*)"
     ]
   }
 }

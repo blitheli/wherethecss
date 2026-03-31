@@ -5,7 +5,7 @@ import {
   useThree,
   type ThreeElement,
 } from "@react-three/fiber";
-import { AgXToneMapping, MathUtils, Vector3 } from "three";
+import { AgXToneMapping, MathUtils, Vector3, Group } from "three";
 import { TilesPlugin } from "3d-tiles-renderer/r3f";
 import { context, mrt, output, pass, toneMapping, uniform } from "three/tsl";
 import {
@@ -40,12 +40,9 @@ import { CesiumGlobe } from "../components/CesiumGlobe";
 import { ISS } from "../components/ISS";
 import { TG_glb } from "../components/TG_glb";
 import { Ellipsoid, Geodetic, radians } from "@takram/three-geospatial";
-import {
-  getLocalDate,
-  useLocalDateLevaControls,
-} from "../controls/localDateLevaControls";
-import { useLocationLevaControls } from "../controls/locationLevaControls";
 import { OrbitControls } from "@react-three/drei";
+import { TimeControl } from "../components/TimeControl";
+import { SatelliteEphemeris, TIANJONG_TLE } from "../core/SatelliteEphemeris";
 
 extend({ AtmosphereLight });
 
@@ -59,32 +56,41 @@ declare module "@react-three/fiber" {
   使用webgpu渲染地球模型(sphereGeometry+blueMarble材质)
 
   3D Tiles插件实现地球全球视角, 通过坐标系原点切换的方式实现ISS在世界系原点附近
-
+  集成卫星星历系统，支持实时/仿真模式的时间控制
 
   20260319  blitheli
+  202603311 blitheli - 集成星历系统
 */
 
 const geodetic = new Geodetic();
 const position = new Vector3();
 
 // 使用WebGPUObject组件渲染
-function Content() {
+function Content({
+  currentTime,
+  isRealtime,
+  simulationSpeed,
+  isPaused,
+}: {
+  currentTime: Date;
+  isRealtime: boolean;
+  simulationSpeed: number;
+  isPaused: boolean;
+}) {
   console.log("重新渲染地球");
 
   // 3D Tiles 插件实例,用于重定向坐标系,使指定 (lat, lon, height) 附近落在原点附近,减轻大坐标下的精度问题。
   const [reorientationPlugin, setReorientationPlugin] =
     useState<ReorientationPlugin | null>(null);
 
-  const { longitude, latitude, height } = useLocationLevaControls({
-    longitude: -110,
-    latitude: 45,
-    height: 408000,
-  });
-  const { year, timeOfDay, dayOfYear } = useLocalDateLevaControls({
-    year: 2026,
-    dayOfYear: 200,
-    timeOfDay: 6.5,
-  });
+  // 初始化卫星星历
+  const satelliteEphemeris = useResource(
+    () => new SatelliteEphemeris(TIANJONG_TLE.line1, TIANJONG_TLE.line2),
+    []
+  );
+
+  // 天宫模型的ref，用于更新位置
+  const tgRef = useRef<Group>(null);
 
   //-------------------------------------------------------------------------------------
 
@@ -112,60 +118,19 @@ function Content() {
   }, [renderer, atmosphereContext]);
 
   //-------------------------------------------------------------------------------------
-  // Leva 滑块离散更新时阴影/光照易「一顿一顿」；每帧 damp 逼近经度与地方时，与 Story 里 Motion spring 类似。
-  const smoothTimeOfDayRef = useRef(timeOfDay);
-  const smoothLongitudeRef = useRef(longitude);
-  const DAMP = 10;
+  // 每帧更新时间和光照方向
+  useFrame(() => {
+    const { matrixECIToECEF, sunDirectionECEF, moonDirectionECEF } = atmosphereContext;
 
-  useFrame((_, delta) => {
-    smoothTimeOfDayRef.current = MathUtils.damp(
-      smoothTimeOfDayRef.current,
-      timeOfDay,
-      DAMP,
-      delta,
-    );
-    smoothLongitudeRef.current = MathUtils.damp(
-      smoothLongitudeRef.current,
-      longitude,
-      DAMP,
-      delta,
-    );
-
-    const date = getLocalDate(
-      smoothLongitudeRef.current,
-      Math.floor(dayOfYear),
-      smoothTimeOfDayRef.current,
-      year,
-    );
-
-    const { matrixECIToECEF, sunDirectionECEF, moonDirectionECEF } =
-      atmosphereContext;
-
-    getECIToECEFRotationMatrix(date, matrixECIToECEF.value);
-    getSunDirectionECI(date, sunDirectionECEF.value).applyMatrix4(
+    // 使用currentTime状态更新时间
+    getECIToECEFRotationMatrix(currentTime, matrixECIToECEF.value);
+    getSunDirectionECI(currentTime, sunDirectionECEF.value).applyMatrix4(
       matrixECIToECEF.value,
     );
-    getMoonDirectionECI(date, moonDirectionECEF.value).applyMatrix4(
+    getMoonDirectionECI(currentTime, moonDirectionECEF.value).applyMatrix4(
       matrixECIToECEF.value,
     );
   });
-
-  // 经纬高变化时，更新AtmosphereContext的matrixWorldToECEF,以及插件(内部更新了世界坐标系原点)
-  useLayoutEffect(() => {
-    // 更新3D Tiles 插件实例的经纬度，然后调用 update() 方法，将世界坐标系原点定位到指定经纬度附近。
-    if (reorientationPlugin != null) {
-      reorientationPlugin.lon = radians(longitude);
-      reorientationPlugin.lat = radians(latitude);
-      reorientationPlugin.height = height;
-      reorientationPlugin.update();
-
-      // 更新AtmosphereContext的matrixWorldToECEF
-      Ellipsoid.WGS84.getNorthUpEastFrame(
-        geodetic.set(radians(longitude), radians(latitude), height).toECEF(position),
-        atmosphereContext.matrixWorldToECEF.value,
-      );
-    }
-  }, [longitude, latitude, height, reorientationPlugin, atmosphereContext]);
 
   // ---- WebGPU 后处理管线 -------------------------------------------------------------
 
@@ -220,8 +185,39 @@ function Content() {
     [renderer, taaNode],
   );
 
-  // 渲染循环 —— 优先级 1 接管 R3F 默认渲染，由 RenderPipeline 全权负责绘制
+  // 更新天宫位置（基于星历计算）
   useGuardedFrame(() => {
+    if (satelliteEphemeris != null && tgRef.current != null) {
+      const satPosition = satelliteEphemeris.getPositionECEF(
+        currentTime,
+        atmosphereContext.matrixWorldToECEF.value
+      );
+      tgRef.current.position.copy(satPosition);
+
+      // 同时更新ReorientationPlugin的参考点，使坐标系原点跟随卫星
+      if (reorientationPlugin != null) {
+        // 将ECEF位置转换为经纬高
+        const ecefPos = satPosition.clone().applyMatrix4(
+          atmosphereContext.matrixWorldToECEF.value.clone().invert()
+        );
+
+        // 使用Ellipsoid工具转换ECEF到经纬高
+        geodetic.fromECEF(ecefPos.x / 1000, ecefPos.y / 1000, ecefPos.z / 1000);
+
+        reorientationPlugin.lon = geodetic.lon;
+        reorientationPlugin.lat = geodetic.lat;
+        reorientationPlugin.height = geodetic.height * 1000;
+        reorientationPlugin.update();
+
+        // 同步AtmosphereContext的matrixWorldToECEF
+        Ellipsoid.WGS84.getNorthUpEastFrame(
+          ecefPos.x / 1000,
+          ecefPos.y / 1000,
+          ecefPos.z / 1000,
+          atmosphereContext.matrixWorldToECEF.value
+        );
+      }
+    }
     renderPipeline.render();
   }, 1);
 
@@ -266,6 +262,7 @@ function Content() {
       </CesiumGlobe>
       <Suspense>
         <TG_glb
+          ref={tgRef}
           matrixWorldToECEF={atmosphereContext.matrixWorldToECEF.value}
           sunDirectionECEF={atmosphereContext.sunDirectionECEF.value}
         />
@@ -274,25 +271,48 @@ function Content() {
   );
 }
 
+// 父组件状态提升，用于在3D场景外管理时间控制
 export default function TiangongRoute() {
+  const [currentTime, setCurrentTime] = useState(new Date());
+  const [isRealtime, setIsRealtime] = useState(true);
+  const [simulationSpeed, setSimulationSpeed] = useState(60);
+  const [isPaused, setIsPaused] = useState(false);
+
   return (
-    <WebGPUCanvas
-      forceWebGL={false}
-      shadows
-      renderer={{
-        logarithmicDepthBuffer: true,
-        onInit: (renderer) => {
-          renderer.library.addLight(AtmosphereLightNode, AtmosphereLight);
-        },
-      }}
-      camera={{
-        fov: 50,
-        position: [40, 40, 60],
-        near: 10,
-        far: 1e7,
-      }}
-    >
-      <Content />
-    </WebGPUCanvas>
+    <>
+      <TimeControl
+        currentTime={currentTime}
+        onTimeChange={setCurrentTime}
+        isRealtime={isRealtime}
+        onRealtimeChange={setIsRealtime}
+        simulationSpeed={simulationSpeed}
+        onSpeedChange={setSimulationSpeed}
+        isPaused={isPaused}
+        onPauseChange={setIsPaused}
+      />
+      <WebGPUCanvas
+        forceWebGL={false}
+        shadows
+        renderer={{
+          logarithmicDepthBuffer: true,
+          onInit: (renderer) => {
+            renderer.library.addLight(AtmosphereLightNode, AtmosphereLight);
+          },
+        }}
+        camera={{
+          fov: 50,
+          position: [40, 40, 60],
+          near: 10,
+          far: 1e7,
+        }}
+      >
+        <Content
+          currentTime={currentTime}
+          isRealtime={isRealtime}
+          simulationSpeed={simulationSpeed}
+          isPaused={isPaused}
+        />
+      </WebGPUCanvas>
+    </>
   );
 }

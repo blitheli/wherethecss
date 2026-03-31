@@ -1,5 +1,5 @@
-import { useMemo, type ComponentProps, type FC } from 'react'
-import { Matrix3, Vector3, type Matrix4, type Object3D } from 'three'
+import { useMemo, forwardRef, type ComponentProps, type ForwardedRef } from 'react'
+import { Matrix3, Vector3, type Matrix4, type Object3D, Group } from 'three'
 
 import { lerp } from '@takram/three-geospatial'
 import { useGLTF } from '../hooks/useGLTF'
@@ -49,11 +49,12 @@ export interface TiangongProps extends ComponentProps<'group'> {
 }
 
 /** 天宫 GLB 两侧太阳翼：WTTYY 在 TGWT 下、MTTYY 在 TGMT 下；对日旋转作用在子节点（无子则作用在父）。 */
-export const TG_glb: FC<TiangongProps> = ({
+export const TG_glb = forwardRef<Group, TiangongProps>(({
   matrixWorldToECEF,
   sunDirectionECEF,
+  position,
   ...props
-}) => {
+}, ref) => {
   const gltf = useGLTF('/models/tg_simple.glb')
 
   const userData: {
@@ -113,8 +114,10 @@ export const TG_glb: FC<TiangongProps> = ({
   })
 
   return (
-    <group {...props}  rotation-z={0} >
+    <group {...props} rotation-z={0} ref={ref} position={position}>
       <primitive object={gltf.scene}/>
     </group>
   )
-}
+})
+
+TG_glb.displayName = 'TG_glb'
