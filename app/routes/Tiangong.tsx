@@ -35,17 +35,14 @@ import { WebGPUCanvas } from "../components/WebGPUCanvas";
 import { useResource } from "../hooks/useResource";
 import { useGuardedFrame } from "../hooks/useGuardedFrame";
 import { ReorientationPlugin } from "../plugins/ReorientationPlugin";
-import { Globe } from "../components/Globe";
 import { CesiumGlobe } from "../components/CesiumGlobe";
-import { ISS } from "../components/ISS";
 import { TG_glb } from "../components/TG_glb";
 import { Ellipsoid, Geodetic, radians } from "@takram/three-geospatial";
-import {
-  getLocalDate,
-  useLocalDateLevaControls,
-} from "../controls/localDateLevaControls";
-import { useLocationLevaControls } from "../controls/locationLevaControls";
 import { OrbitControls } from "@react-three/drei";
+import { useAtomValue } from "jotai";
+import { playbackModeAtom } from "../lib/clock/simClock";
+import { useOemPosition } from "../hooks/useOemPosition";
+import { formatBeijingClock } from "../lib/clock/simClock";
 
 extend({ AtmosphereLight });
 
@@ -56,54 +53,29 @@ declare module "@react-three/fiber" {
 }
 
 /*
-  使用webgpu渲染地球模型(sphereGeometry+blueMarble材质)
-
-  3D Tiles插件实现地球全球视角, 通过坐标系原点切换的方式实现ISS在世界系原点附近
-
-
-  20260319  blitheli
+  天宫 3D：世界系原点跟随 OEM 插值星下点（ECEF/ENU 重定向）。
+  太阳/月方向用仿真时钟的 UTC Date（与 2D 同一 simTimeMs）。
 */
 
 const geodetic = new Geodetic();
 const position = new Vector3();
 
-// 使用WebGPUObject组件渲染
 function Content() {
-  console.log("重新渲染地球");
-
-  // 3D Tiles 插件实例,用于重定向坐标系,使指定 (lat, lon, height) 附近落在原点附近,减轻大坐标下的精度问题。
   const [reorientationPlugin, setReorientationPlugin] =
     useState<ReorientationPlugin | null>(null);
 
-  const { longitude, latitude, height } = useLocationLevaControls({
-    longitude: -110,
-    latitude: 45,
-    height: 408000,
-  });
-  const { year, timeOfDay, dayOfYear } = useLocalDateLevaControls({
-    year: 2026,
-    dayOfYear: 200,
-    timeOfDay: 6.5,
-  });
+  const { geodetic: oemGeo, simTimeMs, ready } = useOemPosition();
+  const longitude = oemGeo?.longitudeDeg ?? 116.4;
+  const latitude = oemGeo?.latitudeDeg ?? 20;
+  const height = oemGeo?.heightM ?? 400000;
 
-  //-------------------------------------------------------------------------------------
-
-  // 获取相机, 接收一个选择器函数（selector），R3F 会把包含整个场景状态的 state 对象传给它：
-  // state 里大概长这样：camera,  当前活跃相机  scene, Three.js Scene  gl, WebGPU/WebGL 渲染器
-  //选择器 ({ camera }) => camera 从 state 中解构出 camera 并返回，所以最终 const camera 拿到的就是当前的 Three.js 相机对象。
   const renderer = useThree<Renderer>(({ gl }) => gl as any);
   const scene = useThree(({ scene }) => scene);
   const camera = useThree(({ camera }) => camera);
 
-  // 大气上下文对象,使用useMemo缓存,避免重复创建大气上下文对象
   const atmosphereContext = useResource(() => new AtmosphereContextNode(), []);
-  // 将 camera 同步到 atmosphereContext（大气光照需要相机位置做透射率计算）
   atmosphereContext.camera = camera;
 
-  // 在DOM 更新前同步执行,确保渲染器在渲染前就有正确的大气上下文
-  // renderer.contextNode是 Three.js WebGPU 渲染器的全局上下文节点,可以存储在着色器中共享的数据
-  // 这样,后面所有使用 MeshPhysicalNodeMaterial 的材质都可以通过 getAtmosphere() 访问到大气参数(如太阳方向、月亮方向、大气散射参数等),从而实现正确的大气渲染效果。
-  // 简单来说: 这是在给 Three.js 渲染器"装配"大气系统,让所有材质都知道当前场景有大气层,并能获取大气相关的光照信息。
   useLayoutEffect(() => {
     renderer.contextNode = context({
       ...renderer.contextNode.value,
@@ -111,33 +83,39 @@ function Content() {
     });
   }, [renderer, atmosphereContext]);
 
-  //-------------------------------------------------------------------------------------
-  // Leva 滑块离散更新时阴影/光照易「一顿一顿」；每帧 damp 逼近经度与地方时，与 Story 里 Motion spring 类似。
-  const smoothTimeOfDayRef = useRef(timeOfDay);
-  const smoothLongitudeRef = useRef(longitude);
-  const DAMP = 10;
+  const smoothTimeRef = useRef(simTimeMs);
+  const smoothLonRef = useRef(longitude);
+  const smoothLatRef = useRef(latitude);
+  const smoothHRef = useRef(height);
+  const DAMP = 8;
 
   useFrame((_, delta) => {
-    smoothTimeOfDayRef.current = MathUtils.damp(
-      smoothTimeOfDayRef.current,
-      timeOfDay,
+    smoothTimeRef.current = MathUtils.damp(
+      smoothTimeRef.current,
+      simTimeMs,
       DAMP,
       delta,
     );
-    smoothLongitudeRef.current = MathUtils.damp(
-      smoothLongitudeRef.current,
+    smoothLonRef.current = MathUtils.damp(
+      smoothLonRef.current,
       longitude,
       DAMP,
       delta,
     );
-
-    const date = getLocalDate(
-      smoothLongitudeRef.current,
-      Math.floor(dayOfYear),
-      smoothTimeOfDayRef.current,
-      year,
+    smoothLatRef.current = MathUtils.damp(
+      smoothLatRef.current,
+      latitude,
+      DAMP,
+      delta,
+    );
+    smoothHRef.current = MathUtils.damp(
+      smoothHRef.current,
+      height,
+      DAMP,
+      delta,
     );
 
+    const date = smoothTimeRef.current;
     const { matrixECIToECEF, sunDirectionECEF, moonDirectionECEF } =
       atmosphereContext;
 
@@ -148,32 +126,26 @@ function Content() {
     getMoonDirectionECI(date, moonDirectionECEF.value).applyMatrix4(
       matrixECIToECEF.value,
     );
-  });
 
-  // 经纬高变化时，更新AtmosphereContext的matrixWorldToECEF,以及插件(内部更新了世界坐标系原点)
-  useLayoutEffect(() => {
-    // 更新3D Tiles 插件实例的经纬度，然后调用 update() 方法，将世界坐标系原点定位到指定经纬度附近。
-    if (reorientationPlugin != null) {
-      reorientationPlugin.lon = radians(longitude);
-      reorientationPlugin.lat = radians(latitude);
-      reorientationPlugin.height = height;
+    if (reorientationPlugin != null && ready) {
+      reorientationPlugin.lon = radians(smoothLonRef.current);
+      reorientationPlugin.lat = radians(smoothLatRef.current);
+      reorientationPlugin.height = smoothHRef.current;
       reorientationPlugin.update();
 
-      // 更新AtmosphereContext的matrixWorldToECEF
       Ellipsoid.WGS84.getNorthUpEastFrame(
-        geodetic.set(radians(longitude), radians(latitude), height).toECEF(position),
+        geodetic
+          .set(
+            radians(smoothLonRef.current),
+            radians(smoothLatRef.current),
+            smoothHRef.current,
+          )
+          .toECEF(position),
         atmosphereContext.matrixWorldToECEF.value,
       );
     }
-  }, [longitude, latitude, height, reorientationPlugin, atmosphereContext]);
+  });
 
-  // ---- WebGPU 后处理管线 -------------------------------------------------------------
-
-  // 1. 主渲染 pass（启用 MRT：颜色 + 高精度速度缓冲）
-  // pass为WebGPU 后处理管线的节点函数，全称 Pass Node，本质是一个渲染通道节点。
-  // 它把 scene + camera 的渲染结果捕获到 GPU 纹理缓冲区中，而不是直接输出到屏幕。之后可以从这个缓冲区里取出各种数据：
-  // samples>0 时 depth 为多重采样纹理；@takram 的 aerialPerspective / TAA 绑定的是非 MSAA depth，会触发
-  // "Sample count (4) of depth doesn't match expectation (multisampled: 0)"。抗锯齿交给 temporalAntialias。
   const passNode = useResource(
     () =>
       pass(scene, camera, { samples: 0 }).setMRT(
@@ -186,23 +158,18 @@ function Content() {
   const depthNode = passNode.getTextureNode("depth");
   const velocityNode = passNode.getTextureNode("velocity");
 
-  // 2. 空气透视 (Aerial Perspective)
   const aerialNode = useResource(
     () => aerialPerspective(atmosphereContext, colorNode, depthNode),
     [atmosphereContext, colorNode, depthNode],
   );
 
-  // 3. 镜头光晕 (Lens Flare)
   const lensFlareNode = useResource(() => lensFlare(aerialNode), [aerialNode]);
 
-  // 4. 色调映射 (AgX Tone Mapping, 曝光度 = 2)
-  // story.js 原版通过 useToneMappingControls 交互调节，这里固定为 2
   const toneMappingNode = useResource(
     () => toneMapping(AgXToneMapping, uniform(4), lensFlareNode),
     [lensFlareNode],
   );
 
-  // 5. 时域抗锯齿 (Temporal Anti-Aliasing)
   const taaNode = useResource(
     () =>
       temporalAntialias(highpVelocity)(
@@ -214,13 +181,11 @@ function Content() {
     [camera, depthNode, velocityNode, toneMappingNode],
   );
 
-  // 6. 最终后处理（附加 Dithering 去色带）
   const renderPipeline = useResource(
     () => new RenderPipeline(renderer, taaNode.add(dithering)),
     [renderer, taaNode],
   );
 
-  // 渲染循环 —— 优先级 1 接管 R3F 默认渲染，由 RenderPipeline 全权负责绘制
   useGuardedFrame(() => {
     renderPipeline.render();
   }, 1);
@@ -233,7 +198,6 @@ function Content() {
 
   return (
     <>
-      {/* 大气光照：根据大气透射率自动计算太阳颜色 */}
       <atmosphereLight
         args={[atmosphereContext, 80]}
         castShadow
@@ -252,12 +216,6 @@ function Content() {
       </atmosphereLight>
       <OrbitControls minDistance={20} maxDistance={1e5} />
 
-      {/* 注意，这里的ref 把底层拿到的插件实例写进React 的 state，方便页面其它逻辑（例如 useLayoutEffect）去改 
-        lon/lat/height 并 update()。
-        在 React 里，ref 可以传 函数（callback ref）：
-          - 挂载时：React 调用 setReorientationPlugin(instance)，参数是 DOM 或（在 R3F 里）Three / 插件对应的实例。
-          - 卸载时：React 会再调用一次 setReorientationPlugin(null)。
-       */}
       <CesiumGlobe materialHandler={() => new MeshLambertNodeMaterial()}>
         <TilesPlugin
           ref={setReorientationPlugin}
@@ -274,25 +232,50 @@ function Content() {
   );
 }
 
+function TiangongHud() {
+  const { geodetic, simTimeMs, ready } = useOemPosition();
+  const mode = useAtomValue(playbackModeAtom);
+  const bj = formatBeijingClock(simTimeMs);
+
+  return (
+    <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex flex-col items-center bg-gradient-to-b from-black/70 to-transparent px-3 pb-8 pt-3">
+      <p className="text-[11px] tracking-[0.3em] text-sky-400/90">
+        天宫 3D · {mode === "realtime" ? "实时" : "非实时"} · 北京时间
+      </p>
+      <p className="font-mono text-3xl tabular-nums tracking-wider text-white sm:text-4xl">
+        {bj.time}
+      </p>
+      <p className="font-mono text-xs text-zinc-400">
+        {ready && geodetic
+          ? `${geodetic.latitudeDeg.toFixed(2)}°N  ${geodetic.longitudeDeg.toFixed(2)}°E  ${(geodetic.heightM / 1000).toFixed(1)} km`
+          : "等待 OEM…"}
+      </p>
+    </div>
+  );
+}
+
 export default function TiangongRoute() {
   return (
-    <WebGPUCanvas
-      forceWebGL={false}
-      shadows
-      renderer={{
-        logarithmicDepthBuffer: true,
-        onInit: (renderer) => {
-          renderer.library.addLight(AtmosphereLightNode, AtmosphereLight);
-        },
-      }}
-      camera={{
-        fov: 50,
-        position: [40, 40, 60],
-        near: 10,
-        far: 1e7,
-      }}
-    >
-      <Content />
-    </WebGPUCanvas>
+    <div className="relative h-[calc(100vh-3.5rem-5.5rem)] min-h-[420px] w-full bg-black">
+      <TiangongHud />
+      <WebGPUCanvas
+        forceWebGL={false}
+        shadows
+        renderer={{
+          logarithmicDepthBuffer: true,
+          onInit: (renderer) => {
+            renderer.library.addLight(AtmosphereLightNode, AtmosphereLight);
+          },
+        }}
+        camera={{
+          fov: 50,
+          position: [40, 40, 60],
+          near: 10,
+          far: 1e7,
+        }}
+      >
+        <Content />
+      </WebGPUCanvas>
+    </div>
   );
 }

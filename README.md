@@ -11,6 +11,17 @@
 - **可见性 Access**：地面站 ↔ 空间站通过 ASTROX `AccessComputeV2`（见 [astrox-skills/access](https://github.com/blitheli/astrox-skills/tree/main/skills/access)）。
 - **新闻**：仅展示 CMSE 综合新闻标题与原文链接，不转载正文。
 
+
+## 界面与时钟
+
+- **全站深色**：任务控制台风格（近黑底），导航/页头/面板统一暗色。
+- **2D 底图**：MapLibre GL + [CARTO Dark Matter](https://carto.com/basemaps/) 栅格瓦片（OSM 数据），星下点轨迹与当前位置叠加其上。
+- **大屏时钟**：2D 地图顶部居中显示**北京时间**（`Asia/Shanghai`）`HH:mm:ss`，日期较小；UTC 另列。
+- **共享仿真时钟**（`app/lib/clock/simClock.ts` + jotai）：2D 与「天宫 3D」共用 `simTimeMs`。
+- **底部 OEM 时间轴**：跨度 = 官方 `START_TIME`→`STOP_TIME`（约 7 天）。
+  - **实时**：跟随墙钟（钳制在 OEM 窗内），scrubber 同步前进。
+  - **非实时**：暂停跟随，可在有效窗内拖动；2D/3D 均冻结到所选时刻。
+
 ## 轨道数据来源（必须）
 
 | 项目 | 说明 |

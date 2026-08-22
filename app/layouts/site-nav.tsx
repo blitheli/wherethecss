@@ -89,7 +89,7 @@ function NavSection({
 }) {
   return (
     <div className="mb-6">
-      <p className="mb-2 px-3 text-[11px] font-semibold tracking-wider text-slate-500">
+      <p className="mb-2 px-3 text-[11px] font-semibold tracking-wider text-zinc-600">
         {title}
       </p>
       <ul className="space-y-0.5">
@@ -105,15 +105,15 @@ function NavSection({
                 to={to}
                 className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition ${
                   active
-                    ? "bg-slate-200/90 font-medium text-slate-800 dark:bg-slate-700/80 dark:text-slate-100"
-                    : "text-slate-600 hover:bg-slate-200/60 dark:text-slate-300 dark:hover:bg-slate-700/50"
+                    ? "bg-zinc-800 font-medium text-zinc-50"
+                    : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200"
                 }`}
               >
                 <span
                   className={
                     active
-                      ? "text-slate-700 dark:text-slate-200"
-                      : "text-slate-400 dark:text-slate-500"
+                      ? "text-sky-400"
+                      : "text-zinc-600"
                   }
                 >
                   {item.icon}
@@ -143,7 +143,7 @@ export function SiteNav({
       {isCollapsed && (
         <button
           onClick={onToggle}
-          className="fixed left-4 top-[56px] z-50 flex h-10 w-10 items-center justify-center rounded-lg bg-slate-200 text-slate-600 hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600"
+          className="fixed left-4 top-[56px] z-50 flex h-10 w-10 items-center justify-center rounded-lg bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
           title="展开导航"
         >
           <svg className="h-6 w-6" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
@@ -152,11 +152,11 @@ export function SiteNav({
         </button>
       )}
       {isCollapsed ? null : (
-        <aside className="w-56 overflow-y-auto border-r border-slate-200 bg-gray-50 sm:w-64 dark:border-slate-700 dark:bg-slate-900/50">
+        <aside className="w-56 overflow-y-auto border-r border-zinc-800 bg-zinc-950 sm:w-64">
           <nav className="p-4 pt-5" aria-label="站内导航">
             <button
               onClick={onToggle}
-              className="mb-4 flex w-full items-center justify-center rounded-lg p-2 text-slate-600 hover:bg-slate-200/60 dark:text-slate-300 dark:hover:bg-slate-700/50"
+              className="mb-4 flex w-full items-center justify-center rounded-lg p-2 text-zinc-400 hover:bg-zinc-900"
               title="收起导航"
             >
               <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden>

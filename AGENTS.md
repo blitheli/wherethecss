@@ -35,6 +35,14 @@
 - 本站：`app/lib/astrox/buildAccessRequest.ts` 使用 **SitePosition + CzmlPosition(OEM)**，避免默认 Celestrak TLE
 - API 宕机：优雅降级文案；不要让首页崩溃
 
+
+## 暗色主题 / 地图 / 时钟
+
+- 强制深色：`MainLayout` + `html.dark`，勿再引入浅色默认页。
+- 2D 地图：`maplibre-gl` + CARTO `dark_all` 瓦片；轨迹 GeoJSON line + Marker。
+- 时钟状态：`playbackModeAtom` / `simTimeMsAtom` / `orbitDataAtom`；`OemTimeline` 挂在布局底部。
+- 天宫 3D：`useOemPosition()` 驱动 ReorientationPlugin 经纬高，太阳方向用 `simTimeMs`（UTC）。
+
 ## 常用命令
 
 ```bash

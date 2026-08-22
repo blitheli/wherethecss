@@ -80,8 +80,8 @@ export default function AccessPage() {
 
   return (
     <div className="mx-auto max-w-3xl p-4 pb-12">
-      <h1 className="text-2xl font-semibold text-slate-100">可见性 / Access</h1>
-      <p className="mt-2 text-sm text-slate-400">
+      <h1 className="text-2xl font-semibold text-zinc-100">可见性 / Access</h1>
+      <p className="mt-2 text-sm text-zinc-400">
         按{" "}
         <a
           className="text-sky-400 hover:underline"
@@ -92,16 +92,16 @@ export default function AccessPage() {
           ASTROX access 技能
         </a>{" "}
         调用{" "}
-        <code className="text-slate-300">POST /access/AccessComputeV2</code>
+        <code className="text-zinc-300">POST /access/AccessComputeV2</code>
         。空间站位置使用 CMSE OEM 转 CzmlPosition（EME2000/INERTIAL，米制），不编造
         TLE。
       </p>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
         <label className="text-sm">
-          <span className="text-slate-400">模式</span>
+          <span className="text-zinc-400">模式</span>
           <select
-            className="mt-1 w-full rounded-md border border-slate-600 bg-slate-800 px-2 py-2"
+            className="mt-1 w-full rounded-md border border-zinc-600 bg-zinc-800 px-2 py-2"
             value={mode}
             onChange={(e) => setMode(e.target.value as "gs-sat" | "sat-sat")}
           >
@@ -110,9 +110,9 @@ export default function AccessPage() {
           </select>
         </label>
         <label className="text-sm">
-          <span className="text-slate-400">地面站</span>
+          <span className="text-zinc-400">地面站</span>
           <select
-            className="mt-1 w-full rounded-md border border-slate-600 bg-slate-800 px-2 py-2"
+            className="mt-1 w-full rounded-md border border-zinc-600 bg-zinc-800 px-2 py-2"
             value={siteIdx}
             onChange={(e) => setSiteIdx(Number(e.target.value))}
           >
@@ -124,23 +124,23 @@ export default function AccessPage() {
           </select>
         </label>
         <label className="text-sm">
-          <span className="text-slate-400">分析时长（小时）</span>
+          <span className="text-zinc-400">分析时长（小时）</span>
           <input
             type="number"
             min={1}
             max={72}
-            className="mt-1 w-full rounded-md border border-slate-600 bg-slate-800 px-2 py-2"
+            className="mt-1 w-full rounded-md border border-zinc-600 bg-zinc-800 px-2 py-2"
             value={hours}
             onChange={(e) => setHours(Number(e.target.value))}
           />
         </label>
         <label className="text-sm">
-          <span className="text-slate-400">最小仰角（°）</span>
+          <span className="text-zinc-400">最小仰角（°）</span>
           <input
             type="number"
             min={0}
             max={45}
-            className="mt-1 w-full rounded-md border border-slate-600 bg-slate-800 px-2 py-2"
+            className="mt-1 w-full rounded-md border border-zinc-600 bg-zinc-800 px-2 py-2"
             value={minEl}
             onChange={(e) => setMinEl(Number(e.target.value))}
           />
@@ -159,8 +159,8 @@ export default function AccessPage() {
       {msg && <p className="mt-3 text-sm text-amber-200">{msg}</p>}
 
       {passes && passes.length > 0 && (
-        <table className="mt-4 w-full text-left text-sm text-slate-300">
-          <thead className="text-slate-500">
+        <table className="mt-4 w-full text-left text-sm text-zinc-300">
+          <thead className="text-zinc-500">
             <tr>
               <th className="py-2">开始（北京）</th>
               <th>结束（北京）</th>
@@ -170,7 +170,7 @@ export default function AccessPage() {
           </thead>
           <tbody>
             {passes.map((p) => (
-              <tr key={p.AccessStart} className="border-t border-slate-800">
+              <tr key={p.AccessStart} className="border-t border-zinc-800">
                 <td className="py-2">{toBeijing(p.AccessStart)}</td>
                 <td>{toBeijing(p.AccessStop)}</td>
                 <td>{Math.round(p.Duration)} s</td>

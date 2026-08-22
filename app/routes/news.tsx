@@ -18,8 +18,8 @@ export default function NewsPage() {
 
   return (
     <div className="mx-auto max-w-3xl p-4 pb-12">
-      <h1 className="text-2xl font-semibold text-slate-100">综合新闻</h1>
-      <p className="mt-2 text-sm text-slate-400">
+      <h1 className="text-2xl font-semibold text-zinc-100">综合新闻</h1>
+      <p className="mt-2 text-sm text-zinc-400">
         标题与链接抓取自{" "}
         <a
           className="text-sky-400 hover:underline"
@@ -34,7 +34,7 @@ export default function NewsPage() {
       {err && <p className="mt-3 text-amber-200">{err}</p>}
       <ul className="mt-4 space-y-3">
         {(data?.items ?? []).map((item) => (
-          <li key={item.url} className="border-b border-slate-800 pb-3">
+          <li key={item.url} className="border-b border-zinc-800 pb-3">
             <a
               href={item.url}
               target="_blank"
@@ -47,7 +47,7 @@ export default function NewsPage() {
         ))}
       </ul>
       {data && (
-        <p className="mt-4 text-xs text-slate-500">
+        <p className="mt-4 text-xs text-zinc-500">
           本地缓存更新于 {new Date(data.fetchedAt).toLocaleString("zh-CN")}
         </p>
       )}
