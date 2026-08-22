@@ -83,7 +83,7 @@ export function SiteHeader() {
             中国空间站
           </span>
           <span className="block truncate text-xs text-slate-300">
-            3D 可视化展示
+            实时位置 · OEM 轨道
           </span>
         </div>
       </a>
@@ -102,12 +102,14 @@ export function SiteHeader() {
           )}
         </button>
 
-        <button
-          type="button"
+        <a
+          href="https://www.cmse.gov.cn/gfgg/zgkjzgdcs/"
+          target="_blank"
+          rel="noreferrer"
           className="relative rounded-lg border border-white/35 bg-slate-700/40 px-3 py-2 text-sm font-medium text-white transition hover:bg-slate-700/60 sm:px-4"
         >
-          Unlock All Features
-        </button>
+          官方轨道参数
+        </a>
       </div>
     </header>
   );

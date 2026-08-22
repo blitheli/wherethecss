@@ -1,66 +1,111 @@
-# 中国空间站3D展示
+# 中国空间站实时追踪（WhereTheCSS）
 
-A modern, production-ready template for building full-stack React applications using React Router.
+基于 **React Router + TypeScript + Tailwind + Vercel** 的中国空间站（CSS / 天宫）内容与可视化站点。默认首页为**实时追踪**：星下点轨迹、当前经纬高、时钟，以及基于 ASTROX 的过境/可见性预报。三维场景（WebGPU + 3d-tiles-renderer）保留在「天宫 3D」等路由。
 
-[![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/remix-run/react-router-templates/tree/main/default)
+线上：https://wherethecss.vercel.app/
 
-## Features
+## 功能概览
 
-- 🚀 Server-side rendering
-- ⚡️ Hot Module Replacement (HMR)
-- 📦 Asset bundling and optimization
-- 🔄 Data loading and mutations
-- 🔒 TypeScript by default
-- 🎉 TailwindCSS for styling
-- 📖 [React Router docs](https://reactrouter.com/)
+- **实时模式**：使用中国载人航天官网发布的 OEM 星历插值当前位置（有效窗口约 **7 天**）。
+- **每日刷新**：GitHub Action 每天拉取最新 OEM 与综合新闻标题，写入 `public/data/`。
+- **可见性 Access**：地面站 ↔ 空间站通过 ASTROX `AccessComputeV2`（见 [astrox-skills/access](https://github.com/blitheli/astrox-skills/tree/main/skills/access)）。
+- **新闻**：仅展示 CMSE 综合新闻标题与原文链接，不转载正文。
 
-## 开始使用
+## 轨道数据来源（必须）
 
-### 安装
+| 项目 | 说明 |
+| --- | --- |
+| 官方栏目 | [中国空间站轨道参数](https://www.cmse.gov.cn/gfgg/zgkjzgdcs/) |
+| 格式 | CCSDS **OEM 2.0**（`.zip` → `.dat`），**不是** TLE |
+| 参考系 | `EME2000`，时间系 `UTC`，单位 km / km/s |
+| 有效跨度 | `START_TIME` → `STOP_TIME`，实测约 **7 天**（用户所称「约 8 天」对应此官方窗口） |
+| 发布节奏 | 通常每周一、三、五（页面日历禁用二/四/六/日） |
+| 按日 API | `/was5/web/search?token=…&channelid=228160&docreltime=YYYY.M.D` |
+| 说明文 | [中国空间站OEM来啦](https://www.cmse.gov.cn/xwzx/202309/t20230913_54312.html) |
 
-安装依赖:
+本站**不编造** OEM 数值。抓取失败时回退到仓库内 `fixtures/cmse/` 样本，并在元数据中标记。
+
+**不使用 Celestrak TLE** 作为默认轨道源。若未来需在 CMSE 不可达时降级，必须在 UI 与 PR 中明确标注「非官方 OEM」。
+
+## 每日更新
+
+- 脚本：`npm run fetch:cmse`（或分别 `fetch:orbit` / `fetch:news`）
+- 工作流：`.github/workflows/update-cmse-data.yml`（cron `30 2 * * *` UTC + 手动触发）
+- 产物：
+  - `public/data/css-oem-latest.json` — 解析后的米制 `cartesianVelocity`（供前端与 ASTROX CzmlPosition）
+  - `public/data/css-oem-meta.json` — 元数据摘要
+  - `public/data/cmse-news.json` — 新闻标题列表
+
+选择 **GitHub Action** 而非 Vercel Cron：当前 `react-router.config.ts` 为 `ssr: false`（静态 SPA），把数据写进 `public/data` 最稳妥。
+
+## ASTROX Access 调用
+
+- 文档技能：https://github.com/blitheli/astrox-skills/tree/main/skills/access （阅读 `SKILL.md` + fixtures）
+- 默认服务：`http://astrox.cn:8765`
+- 端点：`POST /access/AccessComputeV2`
+- 本站构造：`FromObjectPath.Position = SitePosition`，`ToObjectPath.Position = CzmlPosition`（由 CMSE OEM 转换，`referenceFrame: INERTIAL`）
+- 环境变量：`VITE_ASTROX_BASE_URL`（见 `.env.example`）
+- 降级：网络/超时/非 200/`IsSuccess=false` 时 UI 提示，不阻塞追踪页主流程
+
+本地探测：
+
+```bash
+curl -sS -X POST "http://astrox.cn:8765/access/AccessComputeV2" \
+  -H 'Content-Type: application/json' \
+  --data-binary @<(node -e "
+    // 也可用仓库生成的请求；服务未启动时会失败，属预期
+  ")
+```
+
+## 坐标系约定
+
+| 环节 | 参考系 |
+| --- | --- |
+| CMSE OEM | EME2000 位置/速度（文件内 km） |
+| 站内 JSON | 同上，已换算为 **米 / 米每秒** |
+| 星下点显示 | EME2000 →（GMST）→ ECEF → WGS84 经纬高（可视化精度） |
+| 天宫 3D 页 | 既有 ECEF / ENU / 物体局部坐标逻辑，见 `CLAUDE.md` 与 `TG_glb.tsx` 注释 |
+
+## 本地开发
 
 ```bash
 npm install
+npm run fetch:cmse   # 可选：刷新官方数据
+npm run dev          # http://localhost:5173
 ```
 
-### 开发(Development)
+验证：
 
-Start the development server with HMR:
-
-```bash
-npm run dev
-```
-
-Your application will be available at `http://localhost:5173`.
-
-## 发布(Production)
-
-Create a production build:
+1. 首页显示北京时间/UTC、经纬高、星下点轨迹。
+2. 「即将过境」在 ASTROX 可达时列出弧段；不可达时出现降级文案。
+3. 「轨道参数」「综合新闻」页链接指向 cmse.gov.cn。
+4. 「天宫 3D」原 WebGPU 场景仍可打开。
 
 ```bash
+npm run typecheck
 npm run build
 ```
 
-## 开发
+## 项目结构（关键）
 
-- 若要增加新的页面,首先在app/routes文件夹里新增对应的tsx页面;
-- 然后在layouts/site-nav.tsx里导航栏添加对应的按钮
+```text
+app/
+  components/tracker/   # 实时追踪 UI
+  lib/oem/              # OEM 解析、插值、ECI→大地坐标
+  lib/astrox/           # Access 客户端与请求构造
+  lib/cmse/             # 加载 public/data
+  routes/               # home / access / news / orbit / tiangong …
+scripts/                # fetch-cmse-oem.mjs / fetch-cmse-news.mjs
+fixtures/cmse/          # HTML + OEM 样本（抓取回归）
+public/data/            # 每日更新的 JSON
+.github/workflows/      # 每日 Action
+```
 
 ## Vercel
 
-本项目开发阶段使用Vercel进行发布，便于随时查看网页效果
+- 使用 `@vercel/react-router` preset；推送后自动部署。
+- 勿提交 `.env` 中的真实密钥。
 
-- 在 package.json 中增加了 @vercel/react-router（当前为 ^1.2.6）。
-- 从 @vercel/react-router/vite 引入 vercelPreset，并加入 presets: [vercelPreset()]，让构建产物符合 Vercel 的 SSR / 函数拆分与部署摘要。
-- 打开vercel.com，用 GitHub导入本仓库。
-- 之后本仓库commit后,vercel.com自动更新
-- 查看网址: https://wherethecss.vercel.app/
+## 许可与引用
 
-## 样式
-
-This template comes with [Tailwind CSS](https://tailwindcss.com/) already configured for a simple default starting experience. You can use whatever CSS framework you prefer.
-
----
-
-Built with ❤️ using React Router.
+轨道与新闻内容版权归属中国载人航天相关发布方；本站仅做公开信息的非商业可视化引用，并标注官方 URL。

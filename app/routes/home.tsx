@@ -1,20 +1,16 @@
 import type { Route } from "./+types/home";
+import { RealtimeTracker } from "../components/tracker/RealtimeTracker";
 
 export function meta({}: Route.MetaArgs) {
   return [
-    { title: "首页" },
-    { name: "robots", content: "noindex" },
+    { title: "中国空间站实时追踪 · WhereTheCSS" },
+    {
+      name: "description",
+      content: "基于中国载人航天官网 OEM 的中国空间站实时位置、星下点与过境预报",
+    },
   ];
 }
 
-export default function content() {
-
-
-  return (
-    <div className="mx-auto max-w-lg">
-      <h1 className="mt-2 text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">
-        首页内容,待实现
-      </h1>
-    </div>
-  );
+export default function Home() {
+  return <RealtimeTracker />;
 }

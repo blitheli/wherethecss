@@ -1,0 +1,15 @@
+{
+  "sourcePage": "https://www.cmse.gov.cn/gfgg/zgkjzgdcs/",
+  "sourceZipUrl": "https://www.cmse.gov.cn/gfgg/zgkjzgdcs/202608/W020260821367431140778.zip",
+  "fileName": "CSS_OEM_20260821004850_0001.zip",
+  "fetchedAt": "2026-08-22T15:10:15.808Z",
+  "publishDate": "2026-08-21",
+  "startTime": "2026-08-21T00:00:00.000000Z",
+  "stopTime": "2026-08-28T00:00:00.000000Z",
+  "validityDays": 7,
+  "stepSeconds": 240,
+  "pointCount": 2521,
+  "refFrame": "EME2000",
+  "originator": "BACC",
+  "usedFixtureFallback": false
+}

@@ -6,7 +6,10 @@
     "build": "react-router build",
     "dev": "react-router dev --host",
     "start": "react-router-serve ./build/server/index.js",
-    "typecheck": "react-router typegen && tsc"
+    "typecheck": "react-router typegen && tsc",
+    "fetch:orbit": "node scripts/fetch-cmse-oem.mjs",
+    "fetch:news": "node scripts/fetch-cmse-news.mjs",
+    "fetch:cmse": "node scripts/fetch-cmse-oem.mjs && node scripts/fetch-cmse-news.mjs"
   },
   "dependencies": {
     "@emotion/styled": "^11.14.1",
