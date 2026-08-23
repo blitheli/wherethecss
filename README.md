@@ -23,16 +23,20 @@
   - **实时**：跟随墙钟（钳制在 OEM 窗内），scrubber 同步前进。
   - **非实时**：暂停跟随，可在有效窗内拖动；2D/3D 均冻结到所选时刻。
 
-## 3D 地球（影像 / 地形）
+## 3D 地球（影像 / 椭球地形）
 
-基于 [3DTilesRendererJS](https://github.com/NASA-AMMOS/3DTilesRendererJS)（`3d-tiles-renderer`）与 [@takram/three-geospatial](https://github.com/takram-design-engineering/three-geospatial) 大气/坐标约定：
+基于 [3DTilesRendererJS](https://github.com/NASA-AMMOS/3DTilesRendererJS)（`3d-tiles-renderer`）的 **R3F** 组件 `Globe`，配合 [@takram/three-geospatial](https://github.com/takram-design-engineering/three-geospatial) / `@takram/three-atmosphere` 大气与坐标约定。**不使用 Cesium / Cesium Ion。**
 
-| 模式 (`CesiumGlobe` `source`) | 数据 | Token |
+| 组件 | 数据 | Token |
 | --- | --- | --- |
-| `ion-3dtiles`（默认） | Cesium Ion 全球 3D Tiles（资产 `2275207`，影像+网格） | `VITE_CESIUM_ION_TOKEN`；缺省用 CesiumJS 演示令牌（`cesiumDefaults.ts`，约至 2026-10-01） |
-| `xyz-imagery` | ESRI World Imagery XYZ 椭球（[XYZTilesPlugin](https://github.com/NASA-AMMOS/3DTilesRendererJS)） | **不需要** |
+| `Globe`（默认） | [XYZTilesPlugin](https://nasa-ammos.github.io/3DTilesRendererJS/three/mapTiles.html) + **ESRI World Imagery**，投影到 **WGS84 椭球** | **不需要** |
 
-默认 `ion-3dtiles`：未配置环境变量时自动使用 Cesium 演示令牌，避免空白地球。可设 `VITE_GLOBE_SOURCE=xyz-imagery` 走无 token 的 ESRI XYZ 椭球影像。生产请配置自有 `VITE_CESIUM_ION_TOKEN`。
+- 默认 URL：`https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}`（见 `app/lib/tiles/globeDefaults.ts`）
+- 可选覆盖：`VITE_GLOBE_XYZ_URL`（须含 `{z}`/`{x}`/`{y}` 占位）
+- 椭球模式需 `group.rotation.x = -π/2`（与官方 `mapTiles.js` 一致）
+- 真 DEM / 量化网格地形若需，可另接公开 Quantized Mesh；当前默认是带卫星影像的椭球表面，避免空白地球与 Ion 依赖
+
+天宫 3D（`/tiangong`）与 2D 共用 `simTimeMs`：OEM 插值驱动 `ReorientationPlugin` 与太阳方向。
 
 ## 轨道数据来源（必须）
 
@@ -102,7 +106,7 @@ npm run dev          # http://localhost:5173
 1. 首页显示北京时间/UTC、经纬高、星下点轨迹。
 2. 「即将过境」在 ASTROX 可达时列出弧段；不可达时出现降级文案。
 3. 「轨道参数」「综合新闻」页链接指向 cmse.gov.cn。
-4. 「天宫 3D」原 WebGPU 场景仍可打开。
+4. 「天宫 3D」应看到带卫星影像的地球 + 天宫模型（非空白椭球）。
 
 ```bash
 npm run typecheck

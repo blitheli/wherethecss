@@ -15,7 +15,7 @@
 
 ## 改动原则
 
-1. **扩展现有栈**，不要无故换成 Cesium 整站重写。
+1. **扩展现有栈**（R3F + `3d-tiles-renderer` + `@takram/three-*`），不要引入 Cesium / Cesium Ion 整站依赖。
 2. **最小必要改动**；导航与文案中文化，去掉 ISS 模板英文残留。
 3. **禁止编造** CMSE 轨道数或新闻正文；引用官方 URL。
 4. 旋转/坐标变换须注明参考系（EME2000 / ECEF / ENU / 物体局部）。
@@ -41,7 +41,7 @@
 - 强制深色：`MainLayout` + `html.dark`，勿再引入浅色默认页。
 - 2D 地图：`maplibre-gl` + 高德 `lang=zh_cn` 瓦片 + `.mc-zh-map` invert 深色；轨迹约 2 圈（±92.5 min）GeoJSON + Marker，注意日界线分段。
 - 时钟状态：`playbackModeAtom` / `simTimeMsAtom` / `orbitDataAtom`；`OemTimeline` 挂在布局底部。
-- 天宫 3D：`useOemPosition()` 驱动 ReorientationPlugin；`CesiumGlobe` 默认 `ion-3dtiles`（`resolveCesiumIonToken()` 保证有令牌）；`VITE_GLOBE_SOURCE=xyz-imagery` 可切 ESRI XYZ。
+- 天宫 3D：`useOemPosition()` 驱动 `ReorientationPlugin`；地球用 `Globe`（`XYZTilesPlugin` + ESRI World Imagery 椭球，见 `globeDefaults.ts`）。**禁止** CesiumGlobe / Ion。可选 `VITE_GLOBE_XYZ_URL` 覆盖瓦片模板。
 - 2D 轨迹：SVG 叠加在 MapLibre canvas 之上（避免 `.mc-zh-map` invert 冲掉轨迹颜色）。
 
 ## 常用命令

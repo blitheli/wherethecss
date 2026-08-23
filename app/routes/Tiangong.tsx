@@ -35,7 +35,7 @@ import { WebGPUCanvas } from "../components/WebGPUCanvas";
 import { useResource } from "../hooks/useResource";
 import { useGuardedFrame } from "../hooks/useGuardedFrame";
 import { ReorientationPlugin } from "../plugins/ReorientationPlugin";
-import { CesiumGlobe } from "../components/CesiumGlobe";
+import { Globe } from "../components/Globe";
 import { TG_glb } from "../components/TG_glb";
 import { Ellipsoid, Geodetic, radians } from "@takram/three-geospatial";
 import { OrbitControls } from "@react-three/drei";
@@ -216,18 +216,12 @@ function Content() {
       </atmosphereLight>
       <OrbitControls minDistance={20} maxDistance={1e5} />
 
-      <CesiumGlobe
-        source={
-          (import.meta.env.VITE_GLOBE_SOURCE as "ion-3dtiles" | "xyz-imagery" | undefined) ??
-          "ion-3dtiles"
-        }
-        materialHandler={() => new MeshLambertNodeMaterial()}
-      >
+      <Globe materialHandler={() => new MeshLambertNodeMaterial()}>
         <TilesPlugin
           ref={setReorientationPlugin}
           plugin={ReorientationPlugin}
         />
-      </CesiumGlobe>
+      </Globe>
       <Suspense>
         <TG_glb
           matrixWorldToECEF={atmosphereContext.matrixWorldToECEF.value}
