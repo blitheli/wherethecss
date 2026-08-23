@@ -36,7 +36,7 @@
 - 椭球模式需 `group.rotation.x = -π/2`（与官方 `mapTiles.js` 一致）
 - 真 DEM / 量化网格地形若需，可另接公开 Quantized Mesh；当前默认是带卫星影像的椭球表面，避免空白地球与 Ion 依赖
 
-天宫 3D（`/tiangong`）与 2D 共用 `simTimeMs`：OEM 插值驱动 `ReorientationPlugin` 与太阳方向。
+天宫 3D（`/tiangong`）与 2D 共用 `simTimeMs`：OEM 插值驱动 `ReorientationPlugin` 与太阳方向。有 WebGPU 时走大气后处理；无 WebGPU 时自动切 WebGL 简易光照路径（仍加载同一 XYZ 椭球影像，避免黑屏）。
 
 ## 轨道数据来源（必须）
 

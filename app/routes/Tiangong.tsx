@@ -5,7 +5,12 @@ import {
   useThree,
   type ThreeElement,
 } from "@react-three/fiber";
-import { AgXToneMapping, MathUtils, Vector3 } from "three";
+import {
+  AgXToneMapping,
+  MathUtils,
+  Matrix4,
+  Vector3,
+} from "three";
 import { TilesPlugin } from "3d-tiles-renderer/r3f";
 import { context, mrt, output, pass, toneMapping, uniform } from "three/tsl";
 import {
@@ -31,7 +36,7 @@ import {
   AtmosphereLightNode,
   skyEnvironment,
 } from "@takram/three-atmosphere/webgpu";
-import { WebGPUCanvas } from "../components/WebGPUCanvas";
+import { availableAtom, WebGPUCanvas } from "../components/WebGPUCanvas";
 import { useResource } from "../hooks/useResource";
 import { useGuardedFrame } from "../hooks/useGuardedFrame";
 import { ReorientationPlugin } from "../plugins/ReorientationPlugin";
@@ -40,9 +45,11 @@ import { TG_glb } from "../components/TG_glb";
 import { Ellipsoid, Geodetic, radians } from "@takram/three-geospatial";
 import { OrbitControls } from "@react-three/drei";
 import { useAtomValue } from "jotai";
-import { playbackModeAtom } from "../lib/clock/simClock";
+import {
+  formatBeijingClock,
+  playbackModeAtom,
+} from "../lib/clock/simClock";
 import { useOemPosition } from "../hooks/useOemPosition";
-import { formatBeijingClock } from "../lib/clock/simClock";
 
 extend({ AtmosphereLight });
 
@@ -55,12 +62,135 @@ declare module "@react-three/fiber" {
 /*
   天宫 3D：世界系原点跟随 OEM 插值星下点（ECEF/ENU 重定向）。
   太阳/月方向用仿真时钟的 UTC Date（与 2D 同一 simTimeMs）。
+  地球：R3F Globe = XYZTilesPlugin + ESRI World Imagery（无 Cesium Ion）。
+  WebGPU：大气/空气透视管线；WebGL 回退：简易光照 + 默认瓦片材质（保证可见）。
 */
 
 const geodetic = new Geodetic();
 const position = new Vector3();
+const eciToEcefScratch = new Matrix4();
 
-function Content() {
+function useOemReorientation(
+  reorientationPlugin: ReorientationPlugin | null,
+  onFrame?: (args: {
+    lon: number;
+    lat: number;
+    height: number;
+    simTimeMs: number;
+    worldToEcef: Matrix4;
+  }) => void,
+) {
+  const { geodetic: oemGeo, simTimeMs, ready } = useOemPosition();
+  const longitude = oemGeo?.longitudeDeg ?? 116.4;
+  const latitude = oemGeo?.latitudeDeg ?? 20;
+  const height = oemGeo?.heightM ?? 400000;
+
+  const smoothTimeRef = useRef(simTimeMs);
+  const smoothLonRef = useRef(longitude);
+  const smoothLatRef = useRef(latitude);
+  const smoothHRef = useRef(height);
+  const worldToEcef = useRef(new Matrix4()).current;
+  const DAMP = 8;
+
+  useFrame((_, delta) => {
+    smoothTimeRef.current = MathUtils.damp(
+      smoothTimeRef.current,
+      simTimeMs,
+      DAMP,
+      delta,
+    );
+    smoothLonRef.current = MathUtils.damp(
+      smoothLonRef.current,
+      longitude,
+      DAMP,
+      delta,
+    );
+    smoothLatRef.current = MathUtils.damp(
+      smoothLatRef.current,
+      latitude,
+      DAMP,
+      delta,
+    );
+    smoothHRef.current = MathUtils.damp(
+      smoothHRef.current,
+      height,
+      DAMP,
+      delta,
+    );
+
+    if (reorientationPlugin != null && ready) {
+      reorientationPlugin.lon = radians(smoothLonRef.current);
+      reorientationPlugin.lat = radians(smoothLatRef.current);
+      reorientationPlugin.height = smoothHRef.current;
+      reorientationPlugin.update();
+
+      Ellipsoid.WGS84.getNorthUpEastFrame(
+        geodetic
+          .set(
+            radians(smoothLonRef.current),
+            radians(smoothLatRef.current),
+            smoothHRef.current,
+          )
+          .toECEF(position),
+        worldToEcef,
+      );
+    }
+
+    onFrame?.({
+      lon: smoothLonRef.current,
+      lat: smoothLatRef.current,
+      height: smoothHRef.current,
+      simTimeMs: smoothTimeRef.current,
+      worldToEcef,
+    });
+  });
+
+  return { ready, worldToEcef, simTimeMs };
+}
+
+/** WebGL 回退：不走 TSL/大气后处理，瓦片用默认材质，保证地球可见 */
+function WebGLGlobeContent() {
+  const [reorientationPlugin, setReorientationPlugin] =
+    useState<ReorientationPlugin | null>(null);
+  const sunDirectionECEF = useRef(new Vector3(1, 0, 0)).current;
+
+  const { worldToEcef } = useOemReorientation(
+    reorientationPlugin,
+    ({ simTimeMs, worldToEcef: m }) => {
+      getECIToECEFRotationMatrix(simTimeMs, eciToEcefScratch);
+      getSunDirectionECI(simTimeMs, sunDirectionECEF).applyMatrix4(
+        eciToEcefScratch,
+      );
+      void m;
+    },
+  );
+
+  return (
+    <>
+      <color attach="background" args={["#02040a"]} />
+      <ambientLight intensity={0.45} />
+      <directionalLight position={[80, 120, 40]} intensity={1.4} />
+      <hemisphereLight args={["#8ecae6", "#1b1b1b", 0.35]} />
+      <OrbitControls minDistance={20} maxDistance={1e5} />
+
+      <Globe>
+        <TilesPlugin
+          ref={setReorientationPlugin}
+          plugin={ReorientationPlugin}
+        />
+      </Globe>
+      <Suspense>
+        <TG_glb
+          matrixWorldToECEF={worldToEcef}
+          sunDirectionECEF={sunDirectionECEF}
+        />
+      </Suspense>
+    </>
+  );
+}
+
+/** WebGPU：three-geospatial / three-atmosphere 全管线 */
+function AtmosphereContent() {
   const [reorientationPlugin, setReorientationPlugin] =
     useState<ReorientationPlugin | null>(null);
 
@@ -255,16 +385,20 @@ function TiangongHud() {
 }
 
 export default function TiangongRoute() {
+  const webgpuOk = useAtomValue(availableAtom);
+
   return (
     <div className="relative h-[calc(100vh-3.5rem-5.5rem)] min-h-[420px] w-full bg-black">
       <TiangongHud />
       <WebGPUCanvas
-        forceWebGL={false}
-        shadows
+        forceWebGL={!webgpuOk}
+        shadows={webgpuOk}
         renderer={{
           logarithmicDepthBuffer: true,
           onInit: (renderer) => {
-            renderer.library.addLight(AtmosphereLightNode, AtmosphereLight);
+            if (webgpuOk) {
+              renderer.library.addLight(AtmosphereLightNode, AtmosphereLight);
+            }
           },
         }}
         camera={{
@@ -274,7 +408,7 @@ export default function TiangongRoute() {
           far: 1e7,
         }}
       >
-        <Content />
+        {webgpuOk ? <AtmosphereContent /> : <WebGLGlobeContent />}
       </WebGPUCanvas>
     </div>
   );
