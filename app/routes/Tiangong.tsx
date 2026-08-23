@@ -118,7 +118,8 @@ function useOemReorientation(
       delta,
     );
 
-    if (reorientationPlugin != null && ready) {
+    // 即使 OEM 尚未 ready，也用默认/平滑经纬高立刻重定向，避免相机停在地心内部导致黑屏
+    if (reorientationPlugin != null) {
       reorientationPlugin.lon = radians(smoothLonRef.current);
       reorientationPlugin.lat = radians(smoothLatRef.current);
       reorientationPlugin.height = smoothHRef.current;
@@ -171,7 +172,7 @@ function WebGLGlobeContent() {
       <ambientLight intensity={0.45} />
       <directionalLight position={[80, 120, 40]} intensity={1.4} />
       <hemisphereLight args={["#8ecae6", "#1b1b1b", 0.35]} />
-      <OrbitControls minDistance={20} maxDistance={1e5} />
+      <OrbitControls minDistance={30} maxDistance={8e5} target={[0, -2e4, 0]} />
 
       <Globe>
         <TilesPlugin
@@ -257,7 +258,7 @@ function AtmosphereContent() {
       matrixECIToECEF.value,
     );
 
-    if (reorientationPlugin != null && ready) {
+    if (reorientationPlugin != null) {
       reorientationPlugin.lon = radians(smoothLonRef.current);
       reorientationPlugin.lat = radians(smoothLatRef.current);
       reorientationPlugin.height = smoothHRef.current;
@@ -344,7 +345,7 @@ function AtmosphereContent() {
           far={100}
         />
       </atmosphereLight>
-      <OrbitControls minDistance={20} maxDistance={1e5} />
+      <OrbitControls minDistance={30} maxDistance={8e5} target={[0, -2e4, 0]} />
 
       <Globe materialHandler={() => new MeshLambertNodeMaterial()}>
         <TilesPlugin
@@ -403,9 +404,10 @@ export default function TiangongRoute() {
         }}
         camera={{
           fov: 50,
-          position: [40, 40, 60],
+          // 略抬高并向地心侧看，首帧即可看到地球曲面 + 天宫
+          position: [1.2e5, 1.8e5, 9e4],
           near: 10,
-          far: 1e7,
+          far: 1e8,
         }}
       >
         {webgpuOk ? <AtmosphereContent /> : <WebGLGlobeContent />}
