@@ -195,7 +195,7 @@ function AtmosphereContent() {
   const [reorientationPlugin, setReorientationPlugin] =
     useState<ReorientationPlugin | null>(null);
 
-  const { geodetic: oemGeo, simTimeMs, ready } = useOemPosition();
+  const { geodetic: oemGeo, simTimeMs } = useOemPosition();
   const longitude = oemGeo?.longitudeDeg ?? 116.4;
   const latitude = oemGeo?.latitudeDeg ?? 20;
   const height = oemGeo?.heightM ?? 400000;
@@ -403,9 +403,9 @@ export default function TiangongRoute() {
           },
         }}
         camera={{
-          fov: 50,
-          // 略抬高并向地心侧看，首帧即可看到地球曲面 + 天宫
-          position: [1.2e5, 1.8e5, 9e4],
+          fov: 55,
+          // LEO 侧视：首帧同时看到天宫附近与下方地球曲面
+          position: [6e4, 9e4, 5e4],
           near: 10,
           far: 1e8,
         }}
