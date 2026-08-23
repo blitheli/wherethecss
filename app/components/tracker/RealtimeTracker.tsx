@@ -80,12 +80,14 @@ export function RealtimeTracker() {
     };
   }, [states, simTimeMs]);
 
+  /** CSS 轨道周期约 92.5 min；绘制以当前时刻为中心约 2 圈星下点 */
   const track = useMemo(() => {
     if (!states.length) return [];
+    const PERIOD_MS = 92.5 * 60 * 1000;
     const out: { lon: number; lat: number }[] = [];
-    const t0 = Math.max(simTimeMs - 45 * 60 * 1000, startMs);
-    const t1 = Math.min(simTimeMs + 3 * 3600 * 1000, stopMs || simTimeMs);
-    for (let t = t0; t <= t1; t += 60_000) {
+    const t0 = Math.max(simTimeMs - PERIOD_MS, startMs);
+    const t1 = Math.min(simTimeMs + PERIOD_MS, stopMs || simTimeMs);
+    for (let t = t0; t <= t1; t += 30_000) {
       const { state } = interpolateState(states, t);
       const g = eciToGeodetic(state.positionM, state.timeMs);
       out.push({ lon: g.longitudeDeg, lat: g.latitudeDeg });

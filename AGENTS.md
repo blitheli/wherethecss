@@ -36,12 +36,13 @@
 - API 宕机：优雅降级文案；不要让首页崩溃
 
 
-## 暗色主题 / 地图 / 时钟
+## 暗色主题 / 地图 / 时钟 / 3D 瓦片
 
 - 强制深色：`MainLayout` + `html.dark`，勿再引入浅色默认页。
-- 2D 地图：`maplibre-gl` + CARTO `dark_all` 瓦片；轨迹 GeoJSON line + Marker。
+- 2D 地图：`maplibre-gl` + 高德 `lang=zh_cn` 瓦片 + `.mc-zh-map` invert 深色；轨迹约 2 圈（±92.5 min）GeoJSON + Marker，注意日界线分段。
 - 时钟状态：`playbackModeAtom` / `simTimeMsAtom` / `orbitDataAtom`；`OemTimeline` 挂在布局底部。
-- 天宫 3D：`useOemPosition()` 驱动 ReorientationPlugin 经纬高，太阳方向用 `simTimeMs`（UTC）。
+- 天宫 3D：`useOemPosition()` 驱动 ReorientationPlugin；`CesiumGlobe` 默认 `ion-3dtiles`（`resolveCesiumIonToken()` 保证有令牌）；`VITE_GLOBE_SOURCE=xyz-imagery` 可切 ESRI XYZ。
+- 2D 轨迹：SVG 叠加在 MapLibre canvas 之上（避免 `.mc-zh-map` invert 冲掉轨迹颜色）。
 
 ## 常用命令
 

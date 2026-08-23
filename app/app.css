@@ -71,3 +71,13 @@ body {
   border: 2px solid #0c4a6e;
   cursor: pointer;
 }
+
+
+/* 高德中文瓦片 → 任务控制台深色：反相后中文地名仍可读 */
+.mc-zh-map .maplibregl-canvas {
+  filter: invert(0.92) hue-rotate(180deg) brightness(0.88) contrast(1.05) saturate(0.65);
+}
+.mc-zh-map .maplibregl-ctrl-attrib {
+  filter: none;
+}
+/* 标记在 canvas 外 DOM，不受 invert 影响 */

@@ -15,12 +15,24 @@
 ## 界面与时钟
 
 - **全站深色**：任务控制台风格（近黑底），导航/页头/面板统一暗色。
-- **2D 底图**：MapLibre GL + [CARTO Dark Matter](https://carto.com/basemaps/) 栅格瓦片（OSM 数据），星下点轨迹与当前位置叠加其上。
+- **2D 底图**：MapLibre GL + **高德中文标注**栅格（`lang=zh_cn`），经 CSS invert 转为深色；星下点轨迹与当前位置叠加其上。
+- **星下点**：以当前仿真时刻为中心约 **2 个轨道周期**（≈ ±92.5 min），OEM 插值；过日界线分段。
 - **大屏时钟**：2D 地图顶部居中显示**北京时间**（`Asia/Shanghai`）`HH:mm:ss`，日期较小；UTC 另列。
 - **共享仿真时钟**（`app/lib/clock/simClock.ts` + jotai）：2D 与「天宫 3D」共用 `simTimeMs`。
 - **底部 OEM 时间轴**：跨度 = 官方 `START_TIME`→`STOP_TIME`（约 7 天）。
   - **实时**：跟随墙钟（钳制在 OEM 窗内），scrubber 同步前进。
   - **非实时**：暂停跟随，可在有效窗内拖动；2D/3D 均冻结到所选时刻。
+
+## 3D 地球（影像 / 地形）
+
+基于 [3DTilesRendererJS](https://github.com/NASA-AMMOS/3DTilesRendererJS)（`3d-tiles-renderer`）与 [@takram/three-geospatial](https://github.com/takram-design-engineering/three-geospatial) 大气/坐标约定：
+
+| 模式 (`CesiumGlobe` `source`) | 数据 | Token |
+| --- | --- | --- |
+| `ion-3dtiles`（默认） | Cesium Ion 全球 3D Tiles（资产 `2275207`，影像+网格） | `VITE_CESIUM_ION_TOKEN`；缺省用 CesiumJS 演示令牌（`cesiumDefaults.ts`，约至 2026-10-01） |
+| `xyz-imagery` | ESRI World Imagery XYZ 椭球（[XYZTilesPlugin](https://github.com/NASA-AMMOS/3DTilesRendererJS)） | **不需要** |
+
+默认 `ion-3dtiles`：未配置环境变量时自动使用 Cesium 演示令牌，避免空白地球。可设 `VITE_GLOBE_SOURCE=xyz-imagery` 走无 token 的 ESRI XYZ 椭球影像。生产请配置自有 `VITE_CESIUM_ION_TOKEN`。
 
 ## 轨道数据来源（必须）
 

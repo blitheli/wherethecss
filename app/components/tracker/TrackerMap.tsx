@@ -1,38 +1,33 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Map as MapLibreMap,
   Marker,
   NavigationControl,
-  type GeoJSONSource,
-  type StyleSpecification,
 } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { formatBeijingClock, formatUtcShort } from "../../lib/clock/simClock";
+import { chineseDarkMapStyle } from "../../lib/map/chineseDarkStyle";
 
 type Pt = { lon: number; lat: number };
 
-/** Carto Dark Matter 栅格底图（深色任务控制台风格） */
-const DARK_STYLE: StyleSpecification = {
-  version: 8,
-  sources: {
-    carto: {
-      type: "raster",
-      tiles: [
-        "https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
-        "https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
-        "https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
-      ],
-      tileSize: 256,
-      attribution:
-        '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
-    },
-  },
-  layers: [{ id: "carto", type: "raster", source: "carto" }],
-};
+function splitAntimeridian(track: Pt[]): Pt[][] {
+  const lines: Pt[][] = [];
+  let curLine: Pt[] = [];
+  let prev: Pt | null = null;
+  for (const p of track) {
+    if (prev && Math.abs(p.lon - prev.lon) > 180) {
+      if (curLine.length >= 2) lines.push(curLine);
+      curLine = [];
+    }
+    curLine.push(p);
+    prev = p;
+  }
+  if (curLine.length >= 2) lines.push(curLine);
+  return lines;
+}
 
 /**
- * 2D 实时窗：深色世界底图 + 星下点轨迹 + 当前位置。
- * 顶栏居中大屏显示北京时间（仿真时钟）。
+ * 2D：高德中文底图（CSS invert 深色）+ SVG 星下点叠加（不受 invert 影响）+ 当前位置。
  */
 export function TrackerMap({
   track,
@@ -48,40 +43,18 @@ export function TrackerMap({
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const markerRef = useRef<Marker | null>(null);
+  const [pathDs, setPathDs] = useState<string[]>([]);
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
     const map = new MapLibreMap({
       container: containerRef.current,
-      style: DARK_STYLE,
-      center: current ? [current.lon, current.lat] : [110, 20],
-      zoom: 1.6,
+      style: chineseDarkMapStyle,
+      center: current ? [current.lon, current.lat] : [105, 35],
+      zoom: 1.8,
       attributionControl: { compact: true },
     });
     map.addControl(new NavigationControl({ showCompass: false }), "bottom-right");
-    const ensureTrackLayer = () => {
-      if (!map.getSource("css-track")) {
-        map.addSource("css-track", {
-          type: "geojson",
-          data: { type: "FeatureCollection", features: [] },
-        });
-      }
-      if (!map.getLayer("css-track-line")) {
-        map.addLayer({
-          id: "css-track-line",
-          type: "line",
-          source: "css-track",
-          layout: { "line-join": "round", "line-cap": "round" },
-          paint: {
-            "line-color": "#38bdf8",
-            "line-width": 3,
-            "line-opacity": 0.95,
-          },
-        });
-      }
-    };
-    map.on("load", ensureTrackLayer);
-    map.on("styledata", ensureTrackLayer);
     mapRef.current = map;
     return () => {
       markerRef.current?.remove();
@@ -92,41 +65,34 @@ export function TrackerMap({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // 用 map.project 把星下点投到屏幕 SVG（画在 canvas 之上，避免 invert 把轨迹冲掉）
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
 
-    const apply = () => {
-      const src = map.getSource("css-track") as GeoJSONSource | undefined;
-      if (!src) return;
-      const lines: Pt[][] = [];
-      let curLine: Pt[] = [];
-      let prev: Pt | null = null;
-      for (const p of track) {
-        if (prev && Math.abs(p.lon - prev.lon) > 180) {
-          if (curLine.length >= 2) lines.push(curLine);
-          curLine = [];
+    const redraw = () => {
+      const lines = splitAntimeridian(track);
+      const ds = lines.map((line) => {
+        const parts: string[] = [];
+        for (let i = 0; i < line.length; i++) {
+          const p = line[i]!;
+          const { x, y } = map.project([p.lon, p.lat]);
+          parts.push(`${i === 0 ? "M" : "L"} ${x.toFixed(1)} ${y.toFixed(1)}`);
         }
-        curLine.push(p);
-        prev = p;
-      }
-      if (curLine.length >= 2) lines.push(curLine);
-
-      src.setData({
-        type: "FeatureCollection",
-        features: lines.map((line) => ({
-          type: "Feature",
-          properties: {},
-          geometry: {
-            type: "LineString",
-            coordinates: line.map((p) => [p.lon, p.lat]),
-          },
-        })),
+        return parts.join(" ");
       });
+      setPathDs(ds);
     };
 
-    if (map.isStyleLoaded()) apply();
-    else map.once("load", apply);
+    redraw();
+    map.on("move", redraw);
+    map.on("zoom", redraw);
+    map.on("resize", redraw);
+    return () => {
+      map.off("move", redraw);
+      map.off("zoom", redraw);
+      map.off("resize", redraw);
+    };
   }, [track]);
 
   useEffect(() => {
@@ -145,8 +111,7 @@ export function TrackerMap({
       markerRef.current.setLngLat([current.lon, current.lat]);
     }
 
-    const z = map.getZoom();
-    if (z < 2.5) {
+    if (map.getZoom() < 2.5) {
       map.easeTo({ center: [current.lon, current.lat], duration: 600 });
     }
   }, [current]);
@@ -155,7 +120,7 @@ export function TrackerMap({
 
   return (
     <div className="relative overflow-hidden rounded-xl border border-zinc-800 bg-black shadow-[0_0_40px_rgba(0,0,0,0.5)]">
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex flex-col items-center bg-gradient-to-b from-black/80 via-black/40 to-transparent px-3 pb-10 pt-4">
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex flex-col items-center bg-gradient-to-b from-black/85 via-black/45 to-transparent px-3 pb-10 pt-4">
         <p className="text-[11px] font-medium tracking-[0.35em] text-sky-400/90 uppercase">
           北京时间 · {modeLabel}
         </p>
@@ -167,7 +132,37 @@ export function TrackerMap({
           {formatUtcShort(simTimeMs)}
         </p>
       </div>
-      <div ref={containerRef} className="h-[min(62vh,560px)] w-full" />
+      <div
+        ref={containerRef}
+        className="mc-zh-map h-[min(62vh,560px)] w-full"
+      />
+      <svg
+        className="pointer-events-none absolute inset-0 z-10 h-full w-full"
+        aria-hidden
+      >
+        {pathDs.map((d, i) => (
+          <g key={i}>
+            <path
+              d={d}
+              fill="none"
+              stroke="#38bdf8"
+              strokeWidth={6}
+              strokeOpacity={0.25}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            <path
+              d={d}
+              fill="none"
+              stroke="#7dd3fc"
+              strokeWidth={2.5}
+              strokeOpacity={0.95}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </g>
+        ))}
+      </svg>
     </div>
   );
 }

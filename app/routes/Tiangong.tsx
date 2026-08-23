@@ -216,7 +216,13 @@ function Content() {
       </atmosphereLight>
       <OrbitControls minDistance={20} maxDistance={1e5} />
 
-      <CesiumGlobe materialHandler={() => new MeshLambertNodeMaterial()}>
+      <CesiumGlobe
+        source={
+          (import.meta.env.VITE_GLOBE_SOURCE as "ion-3dtiles" | "xyz-imagery" | undefined) ??
+          "ion-3dtiles"
+        }
+        materialHandler={() => new MeshLambertNodeMaterial()}
+      >
         <TilesPlugin
           ref={setReorientationPlugin}
           plugin={ReorientationPlugin}
