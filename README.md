@@ -35,9 +35,9 @@
 
 - XYZ 默认 URL：`https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}`（可用 `VITE_GLOBE_XYZ_URL` 覆盖）
 - **朝向**：全球浏览 XYZ 需 `-π/2`；LEO/`ReorientationPlugin` 时传 `reoriented`，禁止再套 `-π/2`
-- **飞行**：每帧 OEM 线性插值 ECI→ECEF→经纬高驱动原点重定向（不对 lat/lon 阻尼）；天宫固定在原点，地球相对滑动
-- **轨迹**：约 ±1 轨（共约 2 圈）ECEF 折线投到局部系，与 2D 同源
-- **光照**：太阳 ECEF 方向 → 世界系 `DirectionalLight`；`tg_simple.glb` 为 PBR，帆板仍对日
+- **飞行**：瓦片原点间歇重定（滑出约 80 km 才 `ReorientationPlugin.update`，避免每帧打爆 LOD）；天宫在局部系按 OEM 插值连续滑动
+- **轨迹**：约 ±1 轨珠串（`OBJECT_FRAME` 与重定向一致）
+- **光照**：太阳 ECEF→世界 `DirectionalLight` + 环境/点光；`tg_simple.glb` PBR，帆板对日
 - 模型：`public/models/tg_simple.glb`；相机百米级
 
 `/tiangong` 与 2D 共用 `simTimeMs`；WebGPU/WebGL 同一套非后处理场景。

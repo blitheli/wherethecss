@@ -18,7 +18,7 @@ import { eciToEcef } from "../lib/oem/eciToGeodetic";
 
 const PERIOD_MS = 92.5 * 60 * 1000;
 const SAMPLE_MS = 20_000;
-const BEAD_RADIUS_M = 3200;
+const BEAD_RADIUS_M = 900;
 
 const _local = new Vector3();
 const _ecefToLocal = new Matrix4();
