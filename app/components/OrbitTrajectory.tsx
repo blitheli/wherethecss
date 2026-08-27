@@ -1,4 +1,4 @@
-import { useMemo, useRef, type FC } from "react";
+import { useMemo, useRef, type FC, type MutableRefObject } from "react";
 import { useFrame } from "@react-three/fiber";
 import {
   Matrix4,
@@ -18,7 +18,6 @@ import { eciToEcef } from "../lib/oem/eciToGeodetic";
 
 const PERIOD_MS = 92.5 * 60 * 1000;
 const SAMPLE_MS = 20_000;
-/** 轨迹珠半径（米） */
 const BEAD_RADIUS_M = 3200;
 
 const _local = new Vector3();
@@ -30,9 +29,11 @@ export type OrbitTrajectoryProps = {
   simTimeMs: number;
   startMs: number;
   stopMs: number;
-  lonRad: number;
-  latRad: number;
-  heightM: number;
+  originRef: MutableRefObject<{
+    lon: number;
+    lat: number;
+    height: number;
+  }>;
   color?: string;
 };
 
@@ -45,9 +46,7 @@ export const OrbitTrajectory: FC<OrbitTrajectoryProps> = ({
   simTimeMs,
   startMs,
   stopMs,
-  lonRad,
-  latRad,
-  heightM,
+  originRef,
   color = "#5eead4",
 }) => {
   const instRef = useRef<InstancedMesh>(null);
@@ -81,10 +80,11 @@ export const OrbitTrajectory: FC<OrbitTrajectoryProps> = ({
     const mesh = instRef.current;
     if (!mesh || count < 2) return;
 
+    const { lon, lat, height } = originRef.current;
     WGS84_ELLIPSOID.getObjectFrame(
-      latRad,
-      lonRad,
-      heightM,
+      lat,
+      lon,
+      height,
       0,
       0,
       0,

@@ -1,12 +1,17 @@
 import { Suspense, useRef, useState, type FC } from "react";
-import { useFrame } from "@react-three/fiber";
+import { useFrame, useThree } from "@react-three/fiber";
 import {
   DirectionalLight,
+  Group,
   MathUtils,
   Matrix4,
   Vector3,
 } from "three";
 import { TilesPlugin } from "3d-tiles-renderer/r3f";
+import {
+  OBJECT_FRAME,
+  WGS84_ELLIPSOID,
+} from "3d-tiles-renderer/three";
 import {
   getECIToECEFRotationMatrix,
   getSunDirectionECI,
@@ -19,28 +24,33 @@ import { OrbitTrajectory } from "../components/OrbitTrajectory";
 import { Ellipsoid, Geodetic, radians } from "@takram/three-geospatial";
 import { OrbitControls } from "@react-three/drei";
 import { useAtomValue } from "jotai";
+import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import {
   formatBeijingClock,
   playbackModeAtom,
 } from "../lib/clock/simClock";
 import { useOemMotion } from "../hooks/useOemPosition";
+import { eciToEcef } from "../lib/oem/eciToGeodetic";
+import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 
 /*
   天宫 3D
-  - 地球：Globe auto（有 Google key → Photorealistic 3D Tiles；否则 ESRI XYZ 椭球）
-  - 飞行：每帧用 OEM 插值 ECEF→经纬高驱动 ReorientationPlugin（不阻尼经纬，避免粘滞抖动）
-  - 轨迹：约 ±1 轨 ECEF 折线投到局部系
-  - 光照：太阳方向（ECEF→世界）驱动 DirectionalLight；GLB PBR 受光 + 帆板对日
-  - WebGPU/WebGL 同一套场景
+  - 地球：Globe auto（Google 3D Tiles 或 ESRI XYZ 椭球）
+  - 飞行：原点间歇重定（避免每帧 Reorientation 打爆瓦片）；天宫在局部系连续滑动
+  - 轨迹：约两圈珠串（OBJECT_FRAME）
+  - 光照：太阳 DirectionalLight + 充足环境光
 */
 
 const geodeticScratch = new Geodetic();
 const ecefScratch = new Vector3();
 const eciToEcefMat = new Matrix4();
-const ecefToWorldMat = new Matrix4();
+const ecefToLocal = new Matrix4();
 const sunWorld = new Vector3();
+const stationLocal = new Vector3();
 
-/** 太阳方向光：ECEF 太阳方向 → 世界系，照亮天宫与地球 */
+/** 滑出原点超过该距离（米）才重定瓦片原点 */
+const REBASE_DISTANCE_M = 80_000;
+
 const SunLight: FC<{
   sunDirectionEcef: Vector3;
   matrixWorldToEcef: Matrix4;
@@ -50,10 +60,9 @@ const SunLight: FC<{
   useFrame(() => {
     const light = lightRef.current;
     if (!light) return;
-    ecefToWorldMat.copy(matrixWorldToEcef).invert();
-    sunWorld.copy(sunDirectionEcef).transformDirection(ecefToWorldMat).normalize();
-    // 光源放在「太阳方向」远处，指向原点（天宫）
-    light.position.copy(sunWorld).multiplyScalar(5e5);
+    const inv = ecefToLocal.copy(matrixWorldToEcef).invert();
+    sunWorld.copy(sunDirectionEcef).transformDirection(inv).normalize();
+    light.position.copy(sunWorld).multiplyScalar(2e5);
     light.target.position.set(0, 0, 0);
     light.target.updateMatrixWorld();
   });
@@ -61,18 +70,12 @@ const SunLight: FC<{
   return (
     <directionalLight
       ref={lightRef}
-      intensity={3.2}
-      color="#fff5e6"
+      intensity={4}
+      color="#fff6e8"
       castShadow
-      shadow-mapSize={[2048, 2048]}
-      shadow-bias={-0.0001}
-      shadow-normalBias={0.5}
-    >
-      <orthographicCamera
-        attach="shadow-camera"
-        args={[-200, 200, 200, -200, 10, 1e6]}
-      />
-    </directionalLight>
+      shadow-mapSize={[1024, 1024]}
+      shadow-bias={-0.0002}
+    />
   );
 };
 
@@ -80,20 +83,27 @@ function Content() {
   const [reorientationPlugin, setReorientationPlugin] =
     useState<ReorientationPlugin | null>(null);
 
-  const { geodetic, simTimeMs, ready, states, startMs, stopMs } = useOemMotion();
+  const { geodetic, eciM, simTimeMs, states, startMs, stopMs } = useOemMotion();
 
   const longitude = geodetic?.longitudeDeg ?? 116.4;
   const latitude = geodetic?.latitudeDeg ?? 20;
   const height = geodetic?.heightM ?? 400_000;
 
   const worldToEcef = useRef(new Matrix4()).current;
-  const sunDirectionEcef = useRef(new Vector3(1, 0, 0.2)).current;
+  const sunDirectionEcef = useRef(new Vector3(1, 0.2, 0.3)).current;
+  const stationRef = useRef<Group>(null);
+  const { controls } = useThree();
 
-  // 仅对仿真时钟做极轻平滑，位置用精确插值（不阻尼经纬）
+  const originRef = useRef({
+    lon: radians(longitude),
+    lat: radians(latitude),
+    height,
+  });
+  const originReady = useRef(false);
+
   const smoothTimeRef = useRef(simTimeMs);
 
   useFrame((_, delta) => {
-    // 时钟轻微跟随，避免 scrub 时太阳跳变过猛；位置仍用当前 OEM 插值点
     smoothTimeRef.current = MathUtils.damp(
       smoothTimeRef.current,
       simTimeMs,
@@ -106,27 +116,71 @@ function Content() {
       eciToEcefMat,
     );
 
-    if (reorientationPlugin != null) {
-      // 精确 OEM 点：平滑轨道运动 = 插值本身，勿对 lat/lon 阻尼
-      reorientationPlugin.lon = radians(longitude);
-      reorientationPlugin.lat = radians(latitude);
-      reorientationPlugin.height = height;
-      reorientationPlugin.update();
+    if (reorientationPlugin == null) return;
 
-      Ellipsoid.WGS84.getNorthUpEastFrame(
-        geodeticScratch
-          .set(radians(longitude), radians(latitude), height)
-          .toECEF(ecefScratch),
-        worldToEcef,
-      );
+    const lon = radians(longitude);
+    const lat = radians(latitude);
+    const h = height;
+
+    if (!originReady.current) {
+      originRef.current = { lon, lat, height: h };
+      reorientationPlugin.lon = lon;
+      reorientationPlugin.lat = lat;
+      reorientationPlugin.height = h;
+      reorientationPlugin.update();
+      originReady.current = true;
     }
+
+    WGS84_ELLIPSOID.getObjectFrame(
+      originRef.current.lat,
+      originRef.current.lon,
+      originRef.current.height,
+      0,
+      0,
+      0,
+      ecefToLocal,
+      OBJECT_FRAME,
+    );
+    ecefToLocal.invert();
+
+    let ecefNow: [number, number, number];
+    if (eciM) {
+      ecefNow = eciToEcef(eciM, simTimeMs);
+    } else {
+      geodeticScratch.set(lon, lat, h).toECEF(ecefScratch);
+      ecefNow = [ecefScratch.x, ecefScratch.y, ecefScratch.z];
+    }
+    stationLocal.set(ecefNow[0], ecefNow[1], ecefNow[2]).applyMatrix4(ecefToLocal);
+
+    if (stationLocal.length() > REBASE_DISTANCE_M) {
+      originRef.current = { lon, lat, height: h };
+      reorientationPlugin.lon = lon;
+      reorientationPlugin.lat = lat;
+      reorientationPlugin.height = h;
+      reorientationPlugin.update();
+      stationLocal.set(0, 0, 0);
+    }
+
+    if (stationRef.current) {
+      stationRef.current.position.copy(stationLocal);
+    }
+    const oc = controls as OrbitControlsImpl | null;
+    if (oc?.target) {
+      oc.target.copy(stationLocal);
+    }
+
+    Ellipsoid.WGS84.getNorthUpEastFrame(
+      geodeticScratch.set(lon, lat, h).toECEF(ecefScratch),
+      worldToEcef,
+    );
   });
 
   return (
     <>
       <color attach="background" args={["#02040a"]} />
-      <ambientLight intensity={0.28} />
-      <hemisphereLight args={["#b1d0ff", "#2a2a2a", 0.35]} />
+      <ambientLight intensity={0.85} />
+      <hemisphereLight args={["#cfe0ff", "#3a3a3a", 0.55]} />
+      <pointLight position={[40, 80, 40]} intensity={1.2} distance={500} />
       <SunLight
         sunDirectionEcef={sunDirectionEcef}
         matrixWorldToEcef={worldToEcef}
@@ -138,7 +192,6 @@ function Content() {
         dampingFactor={0.08}
         minDistance={25}
         maxDistance={5e5}
-        target={[0, -60, 0]}
       />
 
       <Globe reoriented>
@@ -148,26 +201,26 @@ function Content() {
         />
       </Globe>
 
-      {ready && (
+      {states.length > 0 && (
         <OrbitTrajectory
           states={states}
           simTimeMs={simTimeMs}
           startMs={startMs}
           stopMs={stopMs}
-          lonRad={radians(longitude)}
-          latRad={radians(latitude)}
-          heightM={height}
+          originRef={originRef}
         />
       )}
 
-      <Suspense fallback={null}>
-        <TG_glb
-          matrixWorldToECEF={worldToEcef}
-          sunDirectionECEF={sunDirectionEcef}
-          castShadow
-          receiveShadow
-        />
-      </Suspense>
+      <group ref={stationRef}>
+        <Suspense fallback={null}>
+          <TG_glb
+            matrixWorldToECEF={worldToEcef}
+            sunDirectionECEF={sunDirectionEcef}
+          />
+        </Suspense>
+        {/* 近距补光，避免 PBR 发黑 */}
+        <pointLight intensity={2.5} distance={200} color="#fff8f0" />
+      </group>
     </>
   );
 }

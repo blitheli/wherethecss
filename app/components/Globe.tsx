@@ -120,14 +120,14 @@ export const Globe: FC<GlobeProps> = ({
       <TilesRenderer
         ref={mergeRefs([ref, connectToDescription])}
         key={`xyz-${url}-r${reoriented ? 1 : 0}`}
-        errorTarget={6}
+        errorTarget={2}
       >
         <TilesPlugin
           plugin={XYZTilesPlugin}
           args={{
             center: true,
             shape: "ellipsoid",
-            levels: 18,
+            levels: 20,
             url,
           }}
         />
