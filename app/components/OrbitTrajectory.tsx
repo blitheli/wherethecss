@@ -96,8 +96,8 @@ export const OrbitTrajectory: FC<OrbitTrajectoryProps> = ({
     for (let i = 0; i < count; i++) {
       _local.copy(ecefSamples[i]!).applyMatrix4(_ecefToLocal);
       _proxy.position.copy(_local);
-      // 当前点（最后一个）略大
-      const s = i === count - 1 ? 1.6 : 1;
+      // 当前点（最后一个）略大，但仍小于天宫尺度以免吞掉模型
+      const s = i === count - 1 ? 1.25 : 1;
       _proxy.scale.setScalar(s);
       _proxy.updateMatrix();
       mesh.setMatrixAt(i, _proxy.matrix);
