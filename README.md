@@ -23,21 +23,24 @@
   - **实时**：跟随墙钟（钳制在 OEM 窗内），scrubber 同步前进。
   - **非实时**：暂停跟随，可在有效窗内拖动；2D/3D 均冻结到所选时刻。
 
-## 3D 地球（影像 / 椭球地形）
+## 3D 地球与天宫
 
-基于 [3DTilesRendererJS](https://github.com/NASA-AMMOS/3DTilesRendererJS)（`3d-tiles-renderer`）的 **R3F** 组件 `Globe`，配合 [@takram/three-geospatial](https://github.com/takram-design-engineering/three-geospatial) 坐标约定。**不使用 Cesium / Cesium Ion。**
+基于 [3DTilesRendererJS](https://github.com/NASA-AMMOS/3DTilesRendererJS) + [@takram/three-geospatial](https://github.com/takram-design-engineering/three-geospatial)。**不使用 Cesium / Cesium Ion。**
 
-| 组件 | 数据 | Token |
+| `Globe` `source` | 数据 | Token |
 | --- | --- | --- |
-| `Globe`（默认） | [XYZTilesPlugin](https://nasa-ammos.github.io/3DTilesRendererJS/three/mapTiles.html) + **ESRI World Imagery**，投影到 **WGS84 椭球** | **不需要** |
+| `auto`（默认） | 有 `VITE_GOOGLE_MAP_API_KEY` → Google Photorealistic **3D Tiles**（影像+地形网格）；否则 ESRI XYZ 椭球影像 | Google key 可选 |
+| `google` | Photorealistic 3D Tiles | `VITE_GOOGLE_MAP_API_KEY` |
+| `xyz` | ESRI World Imagery → WGS84 椭球（官方 [mapTiles](https://nasa-ammos.github.io/3DTilesRendererJS/three/mapTiles.html)；无 DEM） | 不需要 |
 
-- 默认 URL：`https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}`（见 `app/lib/tiles/globeDefaults.ts`）
-- 可选覆盖：`VITE_GLOBE_XYZ_URL`（须含 `{z}`/`{x}`/`{y}` 占位）
-- **朝向**：全球浏览时 `group.rotation.x = -π/2`（官方 mapTiles）；**LEO/天宫**使用 `ReorientationPlugin` 时传 `Globe reoriented`，**不要**再套 `-π/2`（否则双重旋转，地球不进视野）
-- 天宫模型：`public/models/tg_simple.glb`（约数十米）；相机须在**百米级**（如 `[80,120,100]`），拉到 10⁴ m 以上会「看不见」站点
-- `/tiangong` 与 2D 共用 `simTimeMs`；WebGPU/WebGL 共用同一套非后处理场景（避免大气 RenderPipeline 失败后永久黑屏）
+- XYZ 默认 URL：`https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}`（可用 `VITE_GLOBE_XYZ_URL` 覆盖）
+- **朝向**：全球浏览 XYZ 需 `-π/2`；LEO/`ReorientationPlugin` 时传 `reoriented`，禁止再套 `-π/2`
+- **飞行**：每帧 OEM 线性插值 ECI→ECEF→经纬高驱动原点重定向（不对 lat/lon 阻尼）；天宫固定在原点，地球相对滑动
+- **轨迹**：约 ±1 轨（共约 2 圈）ECEF 折线投到局部系，与 2D 同源
+- **光照**：太阳 ECEF 方向 → 世界系 `DirectionalLight`；`tg_simple.glb` 为 PBR，帆板仍对日
+- 模型：`public/models/tg_simple.glb`；相机百米级
 
-真 DEM / 量化网格可另接公开 Quantized Mesh；当前默认是带卫星影像的椭球表面。
+`/tiangong` 与 2D 共用 `simTimeMs`；WebGPU/WebGL 同一套非后处理场景。
 
 ## 轨道数据来源（必须）
 
