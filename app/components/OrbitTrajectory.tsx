@@ -1,13 +1,10 @@
 import { useMemo, useRef, type FC } from "react";
 import { useFrame } from "@react-three/fiber";
 import {
-  BufferGeometry,
-  CatmullRomCurve3,
-  Float32BufferAttribute,
   Matrix4,
-  Mesh,
-  TubeGeometry,
   Vector3,
+  type InstancedMesh,
+  Object3D,
 } from "three";
 import {
   OBJECT_FRAME,
@@ -20,19 +17,19 @@ import {
 import { eciToEcef } from "../lib/oem/eciToGeodetic";
 
 const PERIOD_MS = 92.5 * 60 * 1000;
-const SAMPLE_MS = 30_000;
-/** 管半径（米），LEO 旁足够粗以便看见 */
-const TUBE_RADIUS_M = 1800;
+const SAMPLE_MS = 20_000;
+/** 轨迹珠半径（米） */
+const BEAD_RADIUS_M = 3200;
 
 const _local = new Vector3();
 const _ecefToLocal = new Matrix4();
+const _proxy = new Object3D();
 
 export type OrbitTrajectoryProps = {
   states: StateVector[];
   simTimeMs: number;
   startMs: number;
   stopMs: number;
-  /** 当前重定向原点（与 ReorientationPlugin 同一组经纬高，弧度） */
   lonRad: number;
   latRad: number;
   heightM: number;
@@ -40,8 +37,8 @@ export type OrbitTrajectoryProps = {
 };
 
 /**
- * 约两圈 OEM 轨道丝带。
- * 用与 ReorientationPlugin 相同的 OBJECT_FRAME 把 ECEF → 局部（当前星下点≈原点）。
+ * 约两圈 OEM 轨道：实例化球体「珠串」+ 当前点高亮。
+ * 与 ReorientationPlugin 共用 OBJECT_FRAME（ECEF→局部）。
  */
 export const OrbitTrajectory: FC<OrbitTrajectoryProps> = ({
   states,
@@ -53,8 +50,7 @@ export const OrbitTrajectory: FC<OrbitTrajectoryProps> = ({
   heightM,
   color = "#5eead4",
 }) => {
-  const meshRef = useRef<Mesh>(null);
-  const rebuildAcc = useRef(0);
+  const instRef = useRef<InstancedMesh>(null);
   const windowKey = Math.floor(simTimeMs / SAMPLE_MS);
 
   const ecefSamples = useMemo(() => {
@@ -71,32 +67,20 @@ export const OrbitTrajectory: FC<OrbitTrajectoryProps> = ({
       const [x, y, z] = eciToEcef(state.positionM, state.timeMs);
       pts.push(new Vector3(x, y, z));
     }
+    // 强制加入当前精确位置，保证轨迹过原点附近
+    const { state: now } = interpolateState(states, simTimeMs);
+    const [nx, ny, nz] = eciToEcef(now.positionM, now.timeMs);
+    pts.push(new Vector3(nx, ny, nz));
     return pts;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [states, windowKey, startMs, stopMs]);
+  }, [states, windowKey, startMs, stopMs, simTimeMs]);
 
-  const bootGeom = useMemo(() => {
-    const c = new CatmullRomCurve3(
-      [new Vector3(-1e4, 0, 0), new Vector3(1e4, 0, 0)],
-      false,
-    );
-    return new TubeGeometry(c, 8, TUBE_RADIUS_M, 5, false);
-  }, []);
+  const count = ecefSamples.length;
 
-  const lineGeom = useMemo(() => {
-    const g = new BufferGeometry();
-    const n = Math.max(ecefSamples.length, 2);
-    g.setAttribute(
-      "position",
-      new Float32BufferAttribute(new Float32Array(n * 3), 3),
-    );
-    return g;
-  }, [ecefSamples.length]);
+  useFrame(() => {
+    const mesh = instRef.current;
+    if (!mesh || count < 2) return;
 
-  useFrame((_, delta) => {
-    if (ecefSamples.length < 2) return;
-
-    // 与 ReorientationPlugin.transformLatLonHeightToOrigin 同一变换
     WGS84_ELLIPSOID.getObjectFrame(
       latRad,
       lonRad,
@@ -109,54 +93,29 @@ export const OrbitTrajectory: FC<OrbitTrajectoryProps> = ({
     );
     _ecefToLocal.invert();
 
-    const locals: Vector3[] = [];
-    for (const p of ecefSamples) {
-      _local.copy(p).applyMatrix4(_ecefToLocal);
-      locals.push(_local.clone());
+    for (let i = 0; i < count; i++) {
+      _local.copy(ecefSamples[i]!).applyMatrix4(_ecefToLocal);
+      _proxy.position.copy(_local);
+      // 当前点（最后一个）略大
+      const s = i === count - 1 ? 1.6 : 1;
+      _proxy.scale.setScalar(s);
+      _proxy.updateMatrix();
+      mesh.setMatrixAt(i, _proxy.matrix);
     }
-    if (locals.length < 2) return;
-
-    const attr = lineGeom.getAttribute("position") as Float32BufferAttribute;
-    const n = Math.min(locals.length, attr.count);
-    for (let i = 0; i < n; i++) {
-      attr.setXYZ(i, locals[i]!.x, locals[i]!.y, locals[i]!.z);
-    }
-    attr.needsUpdate = true;
-    lineGeom.setDrawRange(0, n);
-    lineGeom.computeBoundingSphere();
-
-    rebuildAcc.current += delta;
-    if (rebuildAcc.current < 0.2 || !meshRef.current) return;
-    rebuildAcc.current = 0;
-
-    const curve = new CatmullRomCurve3(locals, false, "catmullrom", 0.2);
-    const tube = new TubeGeometry(
-      curve,
-      Math.min(locals.length * 2, 220),
-      TUBE_RADIUS_M,
-      5,
-      false,
-    );
-    const prev = meshRef.current.geometry;
-    meshRef.current.geometry = tube;
-    if (prev !== bootGeom) prev.dispose();
+    mesh.instanceMatrix.needsUpdate = true;
+    mesh.computeBoundingSphere();
   });
 
-  if (ecefSamples.length < 2) return null;
+  if (count < 2) return null;
 
   return (
-    <group>
-      <mesh ref={meshRef} geometry={bootGeom} frustumCulled={false}>
-        <meshBasicMaterial
-          color={color}
-          transparent
-          opacity={0.88}
-          depthWrite={false}
-        />
-      </mesh>
-      <line geometry={lineGeom} frustumCulled={false}>
-        <lineBasicMaterial color="#99f6e4" transparent opacity={1} />
-      </line>
-    </group>
+    <instancedMesh
+      ref={instRef}
+      args={[undefined, undefined, count]}
+      frustumCulled={false}
+    >
+      <sphereGeometry args={[BEAD_RADIUS_M, 10, 10]} />
+      <meshBasicMaterial color={color} transparent opacity={0.9} depthWrite={false} />
+    </instancedMesh>
   );
 };
