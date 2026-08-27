@@ -25,7 +25,7 @@
 
 ## 3D 地球（影像 / 椭球地形）
 
-基于 [3DTilesRendererJS](https://github.com/NASA-AMMOS/3DTilesRendererJS)（`3d-tiles-renderer`）的 **R3F** 组件 `Globe`，配合 [@takram/three-geospatial](https://github.com/takram-design-engineering/three-geospatial) / `@takram/three-atmosphere` 大气与坐标约定。**不使用 Cesium / Cesium Ion。**
+基于 [3DTilesRendererJS](https://github.com/NASA-AMMOS/3DTilesRendererJS)（`3d-tiles-renderer`）的 **R3F** 组件 `Globe`，配合 [@takram/three-geospatial](https://github.com/takram-design-engineering/three-geospatial) 坐标约定。**不使用 Cesium / Cesium Ion。**
 
 | 组件 | 数据 | Token |
 | --- | --- | --- |
@@ -33,10 +33,11 @@
 
 - 默认 URL：`https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}`（见 `app/lib/tiles/globeDefaults.ts`）
 - 可选覆盖：`VITE_GLOBE_XYZ_URL`（须含 `{z}`/`{x}`/`{y}` 占位）
-- 椭球模式需 `group.rotation.x = -π/2`（与官方 `mapTiles.js` 一致）
-- 真 DEM / 量化网格地形若需，可另接公开 Quantized Mesh；当前默认是带卫星影像的椭球表面，避免空白地球与 Ion 依赖
+- **朝向**：全球浏览时 `group.rotation.x = -π/2`（官方 mapTiles）；**LEO/天宫**使用 `ReorientationPlugin` 时传 `Globe reoriented`，**不要**再套 `-π/2`（否则双重旋转，地球不进视野）
+- 天宫模型：`public/models/tg_simple.glb`（约数十米）；相机须在**百米级**（如 `[80,120,100]`），拉到 10⁴ m 以上会「看不见」站点
+- `/tiangong` 与 2D 共用 `simTimeMs`；WebGPU/WebGL 共用同一套非后处理场景（避免大气 RenderPipeline 失败后永久黑屏）
 
-天宫 3D（`/tiangong`）与 2D 共用 `simTimeMs`：OEM 插值驱动 `ReorientationPlugin` 与太阳方向。有 WebGPU 时走大气后处理；无 WebGPU 时自动切 WebGL 简易光照路径（仍加载同一 XYZ 椭球影像，避免黑屏）。
+真 DEM / 量化网格可另接公开 Quantized Mesh；当前默认是带卫星影像的椭球表面。
 
 ## 轨道数据来源（必须）
 

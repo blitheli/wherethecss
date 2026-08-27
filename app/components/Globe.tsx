@@ -22,10 +22,14 @@ import { connectToDescription } from "./Description";
 import { resolveGlobeXyzUrl } from "../lib/tiles/globeDefaults";
 
 /*
-  地球影像（R3F + 3d-tiles-renderer）
-  - 默认：XYZTilesPlugin + ESRI World Imagery，投影到 WGS84 椭球（官方 mapTiles 椭球模式）
-  - 不依赖 Cesium Ion / Google Photorealistic
-  - XYZ 椭球需 group.rotation.x = -π/2（与官方 mapTiles.js 一致）
+  地球影像（R3F + 3d-tiles-renderer XYZTilesPlugin）
+  - 默认 ESRI World Imagery → WGS84 椭球（官方 mapTiles 示例）
+  - 无 Cesium Ion
+
+  坐标系注意（ECEF Z-up → three.js Y-up）：
+  - 全球浏览（无 ReorientationPlugin）：需要 group.rotation.x = -π/2（官方 mapTiles.js）
+  - LEO / 天宫（有 ReorientationPlugin）：插件已把 ECEF 转到局部 Y-up，
+    再套父级 -π/2 会双重旋转，导致地球不在视野 / 黑屏。此时传 reoriented
 */
 
 const dracoLoader = new DRACOLoader();
@@ -35,6 +39,11 @@ export interface GlobeProps {
   ref?: Ref<TilesRendererImpl>;
   /** XYZ 瓦片 URL 模板；默认 ESRI World Imagery */
   xyzUrl?: string;
+  /**
+   * 为 true 时表示场景使用 ReorientationPlugin（LEO 原点重定向）。
+   * 此时不再额外施加 XYZ 的 -π/2 父旋转。
+   */
+  reoriented?: boolean;
   materialHandler?: () => Material;
   showAttribution?: boolean;
   children?: ReactNode;
@@ -43,17 +52,21 @@ export interface GlobeProps {
 export const Globe: FC<GlobeProps> = ({
   ref,
   xyzUrl,
+  reoriented = false,
   materialHandler,
   showAttribution = true,
   children,
 }) => {
   const url = xyzUrl ?? resolveGlobeXyzUrl();
+  const yUpFix: [number, number, number] = reoriented
+    ? [0, 0, 0]
+    : [-Math.PI / 2, 0, 0];
 
   return (
-    <group rotation={[-Math.PI / 2, 0, 0]}>
+    <group rotation={yUpFix}>
       <TilesRenderer
         ref={mergeRefs([ref, connectToDescription])}
-        key={`xyz-${url}`}
+        key={`xyz-${url}-r${reoriented ? 1 : 0}`}
       >
         <TilesPlugin
           plugin={XYZTilesPlugin}

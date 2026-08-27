@@ -41,7 +41,7 @@
 - 强制深色：`MainLayout` + `html.dark`，勿再引入浅色默认页。
 - 2D 地图：`maplibre-gl` + 高德 `lang=zh_cn` 瓦片 + `.mc-zh-map` invert 深色；轨迹约 2 圈（±92.5 min）GeoJSON + Marker，注意日界线分段。
 - 时钟状态：`playbackModeAtom` / `simTimeMsAtom` / `orbitDataAtom`；`OemTimeline` 挂在布局底部。
-- 天宫 3D：`useOemPosition()` 驱动 `ReorientationPlugin`；地球用 `Globe`（`XYZTilesPlugin` + ESRI World Imagery 椭球，见 `globeDefaults.ts`）。**禁止** CesiumGlobe / Ion。可选 `VITE_GLOBE_XYZ_URL` 覆盖瓦片模板。
+- 天宫 3D：`useOemPosition()` + `ReorientationPlugin` 把星下点放到世界原点；`Globe reoriented`（`XYZTilesPlugin` + ESRI，**禁止**再套父级 `-π/2`，也禁止 Cesium/Ion）。相机须在百米级才能看见 `tg_simple.glb`（约数十米）。可选 `VITE_GLOBE_XYZ_URL`。
 - 2D 轨迹：SVG 叠加在 MapLibre canvas 之上（避免 `.mc-zh-map` invert 冲掉轨迹颜色）。
 
 ## 常用命令

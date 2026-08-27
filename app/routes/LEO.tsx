@@ -256,7 +256,7 @@ function Content() {
           - 挂载时：React 调用 setReorientationPlugin(instance)，参数是 DOM 或（在 R3F 里）Three / 插件对应的实例。
           - 卸载时：React 会再调用一次 setReorientationPlugin(null)。
        */}
-      <Globe materialHandler={() => new MeshLambertNodeMaterial()}>
+      <Globe reoriented materialHandler={() => new MeshLambertNodeMaterial()}>
         <TilesPlugin
           ref={setReorientationPlugin}
           plugin={ReorientationPlugin}
