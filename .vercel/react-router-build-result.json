@@ -1,62 +1,70 @@
 {
   "buildManifest": {
-    "serverBundles": {
-      "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0": {
-        "id": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
-        "file": "build/server/nodejs_eyJydW50aW1lIjoibm9kZWpzIn0/index.js",
-        "config": {
-          "runtime": "nodejs"
-        }
-      }
-    },
-    "routeIdToServerBundleId": {
-      "root": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
-      "routes/home": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
-      "routes/box": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
-      "routes/error": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0"
-    },
     "routes": {
       "root": {
         "id": "root",
-        "file": "app/root.tsx",
-        "path": "",
-        "config": {
-          "runtime": "nodejs"
-        }
+        "file": "root.tsx",
+        "path": ""
       },
       "layouts/MainLayout": {
         "id": "layouts/MainLayout",
         "parentId": "root",
-        "file": "app/layouts/MainLayout.tsx",
-        "config": {}
+        "file": "layouts/MainLayout.tsx"
       },
       "routes/home": {
         "id": "routes/home",
         "parentId": "layouts/MainLayout",
-        "file": "app/routes/home.tsx",
-        "index": true,
-        "config": {}
+        "file": "routes/home.tsx",
+        "index": true
+      },
+      "routes/access": {
+        "id": "routes/access",
+        "parentId": "layouts/MainLayout",
+        "file": "routes/access.tsx",
+        "path": "access"
+      },
+      "routes/news": {
+        "id": "routes/news",
+        "parentId": "layouts/MainLayout",
+        "file": "routes/news.tsx",
+        "path": "news"
+      },
+      "routes/orbit": {
+        "id": "routes/orbit",
+        "parentId": "layouts/MainLayout",
+        "file": "routes/orbit.tsx",
+        "path": "orbit"
       },
       "routes/box": {
         "id": "routes/box",
         "parentId": "layouts/MainLayout",
-        "file": "app/routes/box.tsx",
-        "path": "box",
-        "config": {}
+        "file": "routes/box.tsx",
+        "path": "box"
+      },
+      "routes/LEO": {
+        "id": "routes/LEO",
+        "parentId": "layouts/MainLayout",
+        "file": "routes/LEO.tsx",
+        "path": "leo"
+      },
+      "routes/Tiangong": {
+        "id": "routes/Tiangong",
+        "parentId": "layouts/MainLayout",
+        "file": "routes/Tiangong.tsx",
+        "path": "tiangong"
       },
       "routes/error": {
         "id": "routes/error",
         "parentId": "layouts/MainLayout",
-        "file": "app/routes/error.tsx",
-        "path": "*",
-        "config": {}
+        "file": "routes/error.tsx",
+        "path": "*"
       }
     }
   },
   "reactRouterConfig": {
-    "appDirectory": "D:/wherethecss/app",
+    "appDirectory": "/workspace/app",
     "basename": "/",
-    "buildDirectory": "D:/wherethecss/build",
+    "buildDirectory": "/workspace/build",
     "future": {
       "unstable_optimizeDeps": false,
       "unstable_passThroughRequests": false,
@@ -84,11 +92,41 @@
         "file": "routes/home.tsx",
         "index": true
       },
+      "routes/access": {
+        "id": "routes/access",
+        "parentId": "layouts/MainLayout",
+        "file": "routes/access.tsx",
+        "path": "access"
+      },
+      "routes/news": {
+        "id": "routes/news",
+        "parentId": "layouts/MainLayout",
+        "file": "routes/news.tsx",
+        "path": "news"
+      },
+      "routes/orbit": {
+        "id": "routes/orbit",
+        "parentId": "layouts/MainLayout",
+        "file": "routes/orbit.tsx",
+        "path": "orbit"
+      },
       "routes/box": {
         "id": "routes/box",
         "parentId": "layouts/MainLayout",
         "file": "routes/box.tsx",
         "path": "box"
+      },
+      "routes/LEO": {
+        "id": "routes/LEO",
+        "parentId": "layouts/MainLayout",
+        "file": "routes/LEO.tsx",
+        "path": "leo"
+      },
+      "routes/Tiangong": {
+        "id": "routes/Tiangong",
+        "parentId": "layouts/MainLayout",
+        "file": "routes/Tiangong.tsx",
+        "path": "tiangong"
       },
       "routes/error": {
         "id": "routes/error",
@@ -98,12 +136,11 @@
       }
     },
     "routeDiscovery": {
-      "mode": "lazy",
-      "manifestPath": "/__manifest"
+      "mode": "initial"
     },
     "serverBuildFile": "index.js",
     "serverModuleFormat": "esm",
-    "ssr": true,
+    "ssr": false,
     "allowedActionOrigins": false,
     "unstable_routeConfig": [
       {
@@ -119,8 +156,28 @@
                 "index": true
               },
               {
+                "file": "routes/access.tsx",
+                "path": "access"
+              },
+              {
+                "file": "routes/news.tsx",
+                "path": "news"
+              },
+              {
+                "file": "routes/orbit.tsx",
+                "path": "orbit"
+              },
+              {
                 "file": "routes/box.tsx",
                 "path": "box"
+              },
+              {
+                "file": "routes/LEO.tsx",
+                "path": "leo"
+              },
+              {
+                "file": "routes/Tiangong.tsx",
+                "path": "tiangong"
               },
               {
                 "file": "routes/error.tsx",

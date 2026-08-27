@@ -6,7 +6,10 @@
     "build": "react-router build",
     "dev": "react-router dev --host",
     "start": "react-router-serve ./build/server/index.js",
-    "typecheck": "react-router typegen && tsc"
+    "typecheck": "react-router typegen && tsc",
+    "fetch:orbit": "node scripts/fetch-cmse-oem.mjs",
+    "fetch:news": "node scripts/fetch-cmse-news.mjs",
+    "fetch:cmse": "node scripts/fetch-cmse-oem.mjs && node scripts/fetch-cmse-news.mjs"
   },
   "dependencies": {
     "@emotion/styled": "^11.14.1",
@@ -23,6 +26,7 @@
     "isbot": "^5.1.36",
     "jotai": "^2.19.0",
     "leva": "^0.10.1",
+    "maplibre-gl": "^6.5.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-router": "7.13.2",

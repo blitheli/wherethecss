@@ -1,7 +1,7 @@
 // R3F, DREI and LEVA imports
 import { Environment } from "@react-three/drei";
 import { WebGPUCanvas } from "../components/WebGPUCanvas";
-import { CesiumGlobe } from "../components/CesiumGlobe";
+import { Globe } from "../components/Globe";
 import { Suspense, useMemo, useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Group, Vector3 } from "three";
@@ -10,19 +10,15 @@ import { useGLTF } from "../hooks/useGLTF";
 import { CameraController } from "../components/CameraController";
 
 /*
-  CesiumGlobe + ISS 模型 + 相机跟随
+  Globe（XYZ 椭球影像）+ ISS 模型 + 相机跟随
 
   借助视角控件： CameraController, 实现ISS和和全球的视角切换
 
-  加载Cesium3D Tiles 全球
   加载两个模型：ISS 和 Hubble, Hubble的位置逐渐靠近ISS,再ISS的视角下，显示正常，无抖动
   
   ISS 位置: 经度110°, 纬度40°, 高度400km
   相机跟随 ISS 并始终保持地平线水平
 */
-
-// Cesium Ion 配置
-const assetId = 2275207; // 全球 3D Tiles
 
 // ISS 组件
 function ISSModel() {
@@ -104,8 +100,7 @@ export default function GlobeCamera() {
           far: 1e9,
         }}
       >
-        {/* Cesium 3D Tiles 全球地形 */}
-        <CesiumGlobe assetId={assetId as number} />
+        <Globe />
 
         {/* ISS 模型 */}
         <Suspense fallback={null}>
