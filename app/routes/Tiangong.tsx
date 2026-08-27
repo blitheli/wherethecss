@@ -154,7 +154,9 @@ function Content() {
           simTimeMs={simTimeMs}
           startMs={startMs}
           stopMs={stopMs}
-          matrixWorldToEcef={worldToEcef}
+          lonRad={radians(longitude)}
+          latRad={radians(latitude)}
+          heightM={height}
         />
       )}
 

@@ -5,9 +5,14 @@ import {
   CatmullRomCurve3,
   Float32BufferAttribute,
   Matrix4,
+  Mesh,
   TubeGeometry,
   Vector3,
 } from "three";
+import {
+  OBJECT_FRAME,
+  WGS84_ELLIPSOID,
+} from "3d-tiles-renderer/three";
 import {
   interpolateState,
   type StateVector,
@@ -16,38 +21,40 @@ import { eciToEcef } from "../lib/oem/eciToGeodetic";
 
 const PERIOD_MS = 92.5 * 60 * 1000;
 const SAMPLE_MS = 30_000;
-/** 管半径（米）：LEO 旁可视 */
-const TUBE_RADIUS_M = 2500;
+/** 管半径（米），LEO 旁足够粗以便看见 */
+const TUBE_RADIUS_M = 1800;
 
 const _local = new Vector3();
-const _ecefToWorld = new Matrix4();
+const _ecefToLocal = new Matrix4();
 
 export type OrbitTrajectoryProps = {
   states: StateVector[];
   simTimeMs: number;
   startMs: number;
   stopMs: number;
-  matrixWorldToEcef: Matrix4;
+  /** 当前重定向原点（与 ReorientationPlugin 同一组经纬高，弧度） */
+  lonRad: number;
+  latRad: number;
+  heightM: number;
   color?: string;
 };
 
 /**
  * 约两圈 OEM 轨道丝带。
- * ECEF 采样按时间窗缓存；每帧投到局部系后节流重建 Tube（兼容 WebGL/WebGPU）。
+ * 用与 ReorientationPlugin 相同的 OBJECT_FRAME 把 ECEF → 局部（当前星下点≈原点）。
  */
 export const OrbitTrajectory: FC<OrbitTrajectoryProps> = ({
   states,
   simTimeMs,
   startMs,
   stopMs,
-  matrixWorldToEcef,
+  lonRad,
+  latRad,
+  heightM,
   color = "#5eead4",
 }) => {
-  const meshRef = useRef<THREE.Mesh>(null);
+  const meshRef = useRef<Mesh>(null);
   const rebuildAcc = useRef(0);
-  const localPts = useRef<Vector3[]>([]);
-
-  // 按采样节拍量化时间窗，避免每秒重建采样
   const windowKey = Math.floor(simTimeMs / SAMPLE_MS);
 
   const ecefSamples = useMemo(() => {
@@ -70,13 +77,12 @@ export const OrbitTrajectory: FC<OrbitTrajectoryProps> = ({
 
   const bootGeom = useMemo(() => {
     const c = new CatmullRomCurve3(
-      [new Vector3(0, 0, 0), new Vector3(10, 0, 0)],
+      [new Vector3(-1e4, 0, 0), new Vector3(1e4, 0, 0)],
       false,
     );
     return new TubeGeometry(c, 8, TUBE_RADIUS_M, 5, false);
   }, []);
 
-  // 细折线（双保险，Tube 重建间隙也能看到）
   const lineGeom = useMemo(() => {
     const g = new BufferGeometry();
     const n = Math.max(ecefSamples.length, 2);
@@ -89,17 +95,27 @@ export const OrbitTrajectory: FC<OrbitTrajectoryProps> = ({
 
   useFrame((_, delta) => {
     if (ecefSamples.length < 2) return;
-    _ecefToWorld.copy(matrixWorldToEcef).invert();
+
+    // 与 ReorientationPlugin.transformLatLonHeightToOrigin 同一变换
+    WGS84_ELLIPSOID.getObjectFrame(
+      latRad,
+      lonRad,
+      heightM,
+      0,
+      0,
+      0,
+      _ecefToLocal,
+      OBJECT_FRAME,
+    );
+    _ecefToLocal.invert();
 
     const locals: Vector3[] = [];
     for (const p of ecefSamples) {
-      _local.copy(p).applyMatrix4(_ecefToWorld);
-      if (_local.length() < 2.5e7) locals.push(_local.clone());
+      _local.copy(p).applyMatrix4(_ecefToLocal);
+      locals.push(_local.clone());
     }
     if (locals.length < 2) return;
-    localPts.current = locals;
 
-    // 更新折线缓冲
     const attr = lineGeom.getAttribute("position") as Float32BufferAttribute;
     const n = Math.min(locals.length, attr.count);
     for (let i = 0; i < n; i++) {
@@ -109,15 +125,14 @@ export const OrbitTrajectory: FC<OrbitTrajectoryProps> = ({
     lineGeom.setDrawRange(0, n);
     lineGeom.computeBoundingSphere();
 
-    // 节流重建管状丝带（约 4 Hz）
     rebuildAcc.current += delta;
-    if (rebuildAcc.current < 0.25 || !meshRef.current) return;
+    if (rebuildAcc.current < 0.2 || !meshRef.current) return;
     rebuildAcc.current = 0;
 
     const curve = new CatmullRomCurve3(locals, false, "catmullrom", 0.2);
     const tube = new TubeGeometry(
       curve,
-      Math.min(locals.length * 2, 200),
+      Math.min(locals.length * 2, 220),
       TUBE_RADIUS_M,
       5,
       false,
@@ -135,16 +150,13 @@ export const OrbitTrajectory: FC<OrbitTrajectoryProps> = ({
         <meshBasicMaterial
           color={color}
           transparent
-          opacity={0.8}
+          opacity={0.88}
           depthWrite={false}
         />
       </mesh>
       <line geometry={lineGeom} frustumCulled={false}>
-        <lineBasicMaterial color={color} transparent opacity={1} />
+        <lineBasicMaterial color="#99f6e4" transparent opacity={1} />
       </line>
     </group>
   );
 };
-
-// three namespace for Mesh type without importing namespace clash
-import type * as THREE from "three";
